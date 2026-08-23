@@ -1,0 +1,4 @@
+# tooling / local artifacts
+.playwright-mcp/
+.pi/
+.DS_Store

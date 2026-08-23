@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THE DAILY GRIND — character kits</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0b0f18; color: #cfe3ff;
+    font-family: "Press Start 2P", monospace;
+    min-height: 100vh; padding: 4vmin 3vmin;
+  }
+  h1 { text-align: center; font-size: clamp(13px, 2.6vmin, 20px); color: #ffd54f;
+       text-shadow: 0 3px 0 rgba(0,0,0,.5); margin-bottom: .8em; }
+  p.sub { text-align: center; font-size: clamp(8px, 1.5vmin, 10px); color: rgba(207,227,255,.55);
+          line-height: 1.9; margin-bottom: 4vmin; }
+  .grid {
+    display: grid; gap: 3vmin; max-width: 1200px; margin: 0 auto;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+  .card {
+    background: rgba(255,255,255,.05);
+    border: 3px solid var(--c);
+    border-radius: 12px; padding: 3vmin;
+    box-shadow: 0 6px 0 rgba(0,0,0,.45);
+    display: flex; flex-direction: column; gap: 1.6vmin;
+  }
+  .who { display: flex; align-items: center; gap: 2vmin; }
+  .face { width: 44px; height: 44px; border-radius: 50%; position: relative; flex-shrink: 0;
+          background: var(--skin); border: 3px solid var(--hair); }
+  .face::before { content:''; position:absolute; inset:-3px -3px auto -3px; height: 16px;
+                  border-radius: 50% 50% 0 0; background: var(--hair); }
+  .face.long::after { content:''; position:absolute; top:-3px; bottom:-6px; left:-7px; right:-7px;
+                      border-radius: 12px; background: var(--hair); z-index:-1; }
+  .face.shades::after { content:''; position:absolute; top:14px; left:4px; right:4px; height:9px;
+                        background:#101318; }
+  .name { font-size: clamp(10px, 1.9vmin, 13px); color: var(--c); line-height: 1.5; }
+  .tag { font-size: clamp(7px, 1.3vmin, 9px); color: rgba(207,227,255,.55); }
+  .row { font-size: clamp(8px, 1.45vmin, 10px); line-height: 1.9; }
+  .row b { display: inline-block; width: 7.2em; font-weight: normal; opacity: .55; }
+  .perk  { color: #69f0ae; }
+  .quirk { color: #82b1ff; }
+  .ouch  { color: #ff8a80; }
+  .pickme {
+    margin-top: auto; padding-top: 1.8vmin; border-top: 2px dashed rgba(255,255,255,.15);
+    font-size: clamp(7px, 1.35vmin, 9px); color: #ffe082; line-height: 1.9;
+  }
+</style>
+</head>
+<body>
+<h1>WHO'S QUITTING TODAY?</h1>
+<p class="sub">same office · four ways to escape it</p>
+
+<div class="grid">
+
+  <div class="card" style="--c:#ffffff; --skin:#ffd9b3; --hair:#4e342e">
+    <div class="who"><div class="face"></div>
+      <div><div class="name">THE INTERN</div><div class="tag">day one energy</div></div></div>
+    <div class="row perk"><b>PERK</b> 4 hearts — still has hope</div>
+    <div class="row quirk"><b>QUIRK</b> managers barely notice him</div>
+    <div class="row ouch"><b>OUCH</b> none. he suffers enough.</div>
+    <div class="pickme">pick me if → you're new, or recruiting a friend with a challenge link</div>
+  </div>
+
+  <div class="card" style="--c:#ce93d8; --skin:#eab98a; --hair:#2b1a12">
+    <div class="who"><div class="face long"></div>
+      <div><div class="name">PRIYA · QA</div><div class="tag">ships shamelessly</div></div></div>
+    <div class="row perk"><b>PERK</b> twin-staple burst 📎📎<br><span style="opacity:.6">fires 2, cycle 25% slower</span></div>
+    <div class="row quirk"><b>QUIRK</b> melts manager + CEO HP</div>
+    <div class="row ouch"><b>OUCH</b> standard 3 hearts</div>
+    <div class="pickme">pick me if → you like deleting bosses, not dodging them</div>
+  </div>
+
+  <div class="card" style="--c:#90caf9; --skin:#ffd9b3; --hair:#c99a54">
+    <div class="who"><div class="face shades"></div>
+      <div><div class="name">CHAD · SALES</div><div class="tag">10x energy</div></div></div>
+    <div class="row perk"><b>PERK</b> triple jump ⏫⏫⏫</div>
+    <div class="row quirk"><b>QUIRK</b> dash recovers 30% faster</div>
+    <div class="row ouch"><b>OUCH</b> 2 hearts max — burnout</div>
+    <div class="pickme">pick me if → you speedrun and accept the consequences</div>
+  </div>
+
+  <div class="card" style="--c:#80cbc4; --skin:#c98d5a; --hair:#1a1a1a">
+    <div class="who"><div class="face"></div>
+      <div><div class="name">MEERA · HR</div><div class="tag">smiling danger</div></div></div>
+    <div class="row perk"><b>PERK</b> "you can't fire HR"<br><span style="opacity:.6">1st fatal hit → survive at 1 ❤️</span></div>
+    <div class="row quirk"><b>QUIRK</b> combo window 2.5s → 3.3s</div>
+    <div class="row ouch"><b>OUCH</b> −8% move speed</div>
+    <div class="pickme">pick me if → you want a chill run with comeback clips</div>
+  </div>
+
+</div>
+</body>
+</html>

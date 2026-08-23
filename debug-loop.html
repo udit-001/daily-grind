@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html><head>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head><body>
+<h3>[DEBUG-a4f2] feedback loop: player visibility after respawn</h3>
+<pre id="out">running…</pre>
+<canvas id="game" width="1280" height="720"></canvas>
+<script src="js/audio.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/game.js"></script>
+<script>
+/* ============================================================
+   [DEBUG-a4f2] RED/GREEN loop for: "player invisible after respawn"
+   Drives the real game headlessly and asserts on CANVAS PIXELS:
+   the player's red tie must be present at his expected screen pos.
+   RED   = tie pixels missing (or camX non-finite)  → bug present
+   GREEN = tie pixels found + finite camera          → bug gone
+   ============================================================ */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function countTiePixels(cx, cy) {
+  // sample a box around the player's expected screen center
+  const c = document.getElementById('game');
+  const g = c.getContext('2d', { willReadFrequently: true });
+  const x0 = Math.max(0, Math.round(cx - 30)), y0 = Math.max(0, Math.round(cy - 55));
+  const w = Math.min(60, c.width - x0), h = Math.min(70, c.height - y0);
+  if (w <= 0 || h <= 0) return -1;
+  const d = g.getImageData(x0, y0, w, h).data;
+  let n = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], gg = d[i+1], b = d[i+2];
+    if (r > 140 && gg < 100 && b < 100 && r - gg > 60) n++; // red tie
+  }
+  return n;
+}
+
+async function run() {
+  const out = [];
+  const log = s => { out.push(s); document.getElementById('out').textContent = out.join('\n'); };
+  const G = window.__G;
+
+  /* ---- scenario A: visibility right at start (post intro) ---- */
+  G.start();
+  await sleep(2800);                       // intro banner passes
+  let i = G.info();
+  const camXa = i.camX;
+  const screenCxA = (i.cx != null) ? i.cx - camXa : NaN;
+  const tiesA = isFinite(screenCxA) ? countTiePixels(screenCxA, i.py + i.h / 2) : -1;
+  log(`A(start): state=${i.state} camX=${camXa} px=${i.px} tiePx=${tiesA} ` +
+      `→ ${isFinite(camXa) && tiesA > 0 ? 'GREEN' : 'RED'}`);
+
+  /* ---- scenario B: hop over desk, run into shredders → forced damage-respawn ---- */
+  const jumpTimer = setInterval(() => { G.press(' ', true); setTimeout(() => G.press(' ', false), 120); }, 700);
+  G.press('ArrowRight', true);
+  const t0 = performance.now();
+  while (performance.now() - t0 < 14000 && G.info().hearts === 3) await sleep(150);
+  G.press('ArrowRight', false);
+  clearInterval(jumpTimer);
+  const heartsAfterWalk = G.info().hearts;
+  await sleep(2600);                       // fade + most of i-frames
+  i = G.info();
+  const camXb = i.camX;
+  const screenCxB = (i.cx != null) ? i.cx - camXb : NaN;
+  const tiesB = isFinite(screenCxB) ? countTiePixels(screenCxB, i.py + i.h / 2) : -1;
+  log(`B(respawn): heartsLost=${3 - heartsAfterWalk} state=${i.state} camX=${camXb} px=${i.px} invuln=${i.invuln} tiePx=${tiesB} ` +
+      `→ ${isFinite(camXb) && tiesB > 0 ? 'GREEN' : 'RED'}`);
+
+  const red = !(isFinite(camXa) && tiesA > 0) || !(isFinite(camXb) && tiesB > 0);
+  log(red ? '=== LOOP VERDICT: RED (bug reproduced) ===' : '=== LOOP VERDICT: GREEN (bug absent) ===');
+  window.__LOOP_VERDICT = red ? 'RED' : 'GREEN';
+}
+setTimeout(run, 600);
+</script>
+</body></html>

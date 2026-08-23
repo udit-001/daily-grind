@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html><head>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head><body>
+<h3>[DEBUG-lad1] ladder: grab / climb / vault / hop-off / loot</h3>
+<pre id="out">running…</pre>
+<canvas id="game" width="1280" height="720"></canvas>
+<script src="js/audio.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/game.js"></script>
+<script>
+/* ============================================================
+   [DEBUG-lad1] RED/GREEN loop for: "ladders non-interactive"
+   Drives the real game and asserts the full climb flow:
+     A GRAB   — hold UP at ladder base  → climbing === true
+     B CLIMB  — hold UP                 → player rises
+     C VAULT  — keep holding at top     → lands ON the shelf (feet≈192)
+     D LOOT   — walk right on shelf     → reaches donut x, stays grounded
+     E HOP    — jump while on ladder    → detaches with upward vy
+   ============================================================ */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function run() {
+  const out = [];
+  const log = s => { out.push(s); document.getElementById('out').textContent = out.join('\n'); };
+  const G = window.__G;
+  const LADDER_X = 22.5 * 48;          // ladder column center
+  const FLOOR_Y = 13 * 48;             // floor A top
+  const SHELF_FEET = 4 * 48;           // one-way shelf surface
+
+  G.start();
+  await sleep(2800);                   // intro banner passes → state=play
+
+  /* ---- A+B+C: grab, climb, vault ---- */
+  G.tp(LADDER_X - 15, FLOOR_Y - 44 - 2);
+  await sleep(250);                    // settle on floor, overlapping rung tile
+  let i = G.info();
+  const baseY = i.py;
+  G.press('ArrowUp', true);            // hold UP
+  await sleep(350);
+  i = G.info();
+  const grabOK = i.climbing === true;
+  log(`A(GRAB): climbing=${i.climbing} → ${grabOK ? 'GREEN' : 'RED'}`);
+
+  await sleep(2200);                   // climb ~215px/s up 8 tiles + vault
+  i = G.info();
+  const feet = i.py + i.h;
+  const vaultOK = !i.climbing && i.grounded && Math.abs(feet - SHELF_FEET) < 6 && i.py < baseY - 200;
+  log(`C(VAULT): climbing=${i.climbing} grounded=${i.grounded} feet=${feet.toFixed(1)} ` +
+      `(want ≈${SHELF_FEET}) → ${vaultOK ? 'GREEN' : 'RED'}`);
+
+  /* ---- D: loot run along the shelf (stop at the donut, shelf ends at x=1200) ---- */
+  G.press('ArrowRight', true);
+  const t0 = performance.now();
+  while (performance.now() - t0 < 1500 && G.info().cx < 1122) await sleep(25);
+  G.press('ArrowRight', false);
+  await sleep(200);
+  G.press('ArrowUp', false);
+  i = G.info();
+  const lootOK = i.grounded && i.cx > 1110 && i.cx < 1170 && Math.abs((i.py + i.h) - SHELF_FEET) < 6;
+  log(`D(LOOT): cx=${i.cx.toFixed(0)} grounded=${i.grounded} score=${i.score} → ${lootOK ? 'GREEN' : 'RED'}`);
+
+  /* ---- E: hop off mid-ladder ---- */
+  G.tp(LADDER_X - 15, FLOOR_Y - 44 - 2);
+  await sleep(250);
+  G.press('ArrowUp', true);
+  await sleep(500);                    // grabbed + partway up
+  i = G.info();
+  const wasClimbing = i.climbing;
+  G.press('d', true);                  // lean right…
+  G.press(' ', true);                  // …tap jump → hop off
+  setTimeout(() => { G.press(' ', false); }, 120);
+  await sleep(260);
+  i = G.info();
+  const hopOK = wasClimbing && !i.climbing && i.vy > 60;
+  log(`E(HOP): wasClimbing=${wasClimbing} now climbing=${i.climbing} vy=${i.vy.toFixed(0)} ` +
+      `→ ${hopOK ? 'GREEN' : 'RED'}`);
+  G.press('ArrowUp', false); G.press('d', false);
+
+  const allGreen = grabOK && vaultOK && lootOK && hopOK;
+  log(`=== LADDER VERDICT: ${allGreen ? 'GREEN (ladders fully interactive)' : 'RED'} ===`);
+  window.__LADDER_VERDICT = allGreen ? 'GREEN' : 'RED';
+}
+run();
+</script></body></html>

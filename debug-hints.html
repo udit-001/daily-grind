@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html><head>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head><body>
+<h3>[DEBUG-hint1] contextual hints: fresh fires once · returning silent</h3>
+<pre id="out">running…</pre>
+<canvas id="game" width="1280" height="720"></canvas>
+<script>
+  const Q = new URLSearchParams(location.search);
+  if (Q.has('fresh')) { localStorage.removeItem('tdg_hints_v1'); localStorage.removeItem('hinttest'); }
+</script>
+<script src="js/audio.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/game.js"></script>
+<script>
+/* ============================================================
+   [DEBUG-hint1] ux-onboarding seen-state loop:
+     PHASE 1 (?fresh) — hints fire progressively, one at a time:
+       A move @ spawn band   B ladder @ chimney   C stapler @ managers
+     PHASE 2 (?returning) — same bands, zero hints (seen-state)
+   ============================================================ */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function run() {
+  const G = window.__G;
+  const out = [];
+  const FLOOR = 13 * 48 - 46;
+
+  if (!Q.has('returning')) {
+    /* ---- PHASE 1 ---- */
+    G.start(); await sleep(2800);
+    G.tp(200, FLOOR); await sleep(500);
+    const a = G.hintState().cur === 'move';
+    out.push('A(move @spawn): ' + a);
+
+    await sleep(4700);                       // let move hint expire & mark seen
+    G.tp(21 * 48, FLOOR); await sleep(500);
+    const b = G.hintState().cur === 'ladder';
+    out.push('B(ladder @chimney): ' + b);
+
+    await sleep(4700);
+    G.tp(36 * 48, FLOOR); await sleep(500);
+    const c = G.hintState().cur === 'stapler';
+    out.push('C(stapler @managers): ' + c);
+
+    localStorage.setItem('hinttest', JSON.stringify({ a, b, c }));
+    out.push('PHASE 1 COMPLETE');
+    document.getElementById('out').textContent = out.join('\n');
+  } else {
+    /* ---- PHASE 2 ---- */
+    const prev = JSON.parse(localStorage.getItem('hinttest') || '{}');
+    G.start(); await sleep(2800);
+    let leaked = null;
+    for (const x of [200, 21 * 48, 36 * 48]) {
+      G.tp(x, FLOOR); await sleep(750);
+      const st = G.hintState();
+      if (st.cur) { leaked = st.cur; break; }
+    }
+    const d = !leaked;
+    out.push('D(returning silent): ' + d + (leaked ? ' LEAKED=' + leaked : ''));
+    const allGreen = prev.a && prev.b && prev.c && d;
+    out.push('prev=' + JSON.stringify(prev));
+    out.push('=== HINT VERDICT: ' + (allGreen ? 'GREEN' : 'RED') + ' ===');
+    window.__HINT_VERDICT = allGreen ? 'GREEN' : 'RED';
+    document.getElementById('out').textContent = out.join('\n');
+  }
+}
+run();
+</script></body></html>

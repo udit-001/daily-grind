@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THE DAILY GRIND — demo / QA lab</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --line:#30363d; --txt:#e6edf3; --dim:#8b949e; --acc:#ffd54f; --grn:#69f0ae; --red:#ff8a80; --blu:#82b1ff; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:14px/1.45 ui-monospace,'Cascadia Code',Menlo,Consolas,monospace; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; gap:14px; align-items:baseline; flex-wrap:wrap; }
+  header h1 { font-size:16px; margin:0; color:var(--acc); letter-spacing:1px; }
+  header span { color:var(--dim); font-size:12px; }
+  main { display:grid; grid-template-columns: 360px 1fr; gap:16px; padding:16px 20px; max-width:1500px; margin:0 auto; }
+  @media (max-width:1100px){ main{ grid-template-columns:1fr; } }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; }
+  section h2 { font-size:11px; margin:0 0 10px; color:var(--dim); text-transform:uppercase; letter-spacing:1.5px; }
+  .grp { margin-bottom:16px; }
+  .grp:last-child { margin-bottom:0; }
+  button { font:inherit; font-size:12px; background:#21262d; color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer; margin:2px 2px 2px 0; }
+  button:hover { border-color:var(--acc); color:var(--acc); }
+  button.grn { border-color:#2ea04366; } button.grn:hover{ color:var(--grn); border-color:var(--grn); }
+  button.red { border-color:#f8514966; } button.red:hover{ color:var(--red); border-color:var(--red); }
+  select, textarea { font:inherit; font-size:12px; background:#0d1117; color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:5px 8px; }
+  textarea { width:100%; min-height:150px; resize:vertical; line-height:1.5; white-space:pre-wrap; }
+  label.radio { display:block; margin:4px 0; color:var(--dim); cursor:pointer; }
+  canvas#game { width:100%; height:auto; display:block; background:#000; border-radius:8px; border:1px solid var(--line); }
+  pre#state { margin:10px 0 0; font-size:11px; color:var(--blu); background:#0d1117; border:1px solid var(--line); border-radius:6px; padding:8px 10px; max-height:180px; overflow:auto; }
+  table.memetable { width:100%; border-collapse:collapse; font-size:12px; }
+  table.memetable td { border-top:1px solid var(--line); padding:4px 8px 4px 0; vertical-align:top; }
+  table.memetable td:first-child { color:var(--dim); width:170px; }
+  .chips span { display:inline-block; background:#21262d; border:1px solid var(--line); border-radius:99px; padding:2px 9px; margin:2px 3px 2px 0; font-size:11px; }
+  .ok { color:var(--grn); } .warn { color:var(--acc); }
+  footer { color:var(--dim); font-size:11px; padding:8px 20px 24px; text-align:center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>THE DAILY GRIND</h1>
+  <span>demo / QA lab — exercises the REAL game logic via <code>__G</code> &amp; <code>__MEMES</code></span>
+</header>
+
+<main>
+  <!-- ============ CONTROLS ============ -->
+  <div>
+    <section class="grp">
+      <h2>Run control</h2>
+      <button id="btnStart" class="grn">▶ start run</button>
+      <button data-warp="0">warp L1</button>
+      <button data-warp="1">warp L2</button>
+      <button data-warp="2">warp L3</button>
+      <button data-warp="3">warp boss</button>
+    </section>
+
+    <section class="grp">
+      <h2>Death cause tester <span style="color:var(--dim)">(death msgs + PIP screen)</span></h2>
+      <select id="cause">
+        <option value="enemy">enemy — absorbed into middle management</option>
+        <option value="plane">plane — fatal paper cut</option>
+        <option value="shred">shred — HR is asking questions</option>
+        <option value="pit">pit — void between departments</option>
+        <option value="boss">boss — failed exit interview</option>
+        <option value="wave">wave — flattened by quarterly results</option>
+        <option value="staple">staple — stapled in triplicate</option>
+      </select>
+      <button id="btnKill" class="red">💀 apply cause</button>
+      <button id="btnHeal">+1 morale</button>
+    </section>
+
+    <section class="grp">
+      <h2>Gates &amp; badge</h2>
+      <button id="btnBadge" class="grn">🎫 give badge + open gates</button>
+      <span style="font-size:11px;color:var(--dim)">warp L2/L3 first, then watch the red gate pop</span>
+    </section>
+
+    <section class="grp">
+      <h2>Combo lab <span style="color:var(--dim)">(window: 2.5s)</span></h2>
+      <button id="btnStomp">+ stomp ×1</button>
+      <button id="btnCombo5" class="grn">⚡ stomp ×5 rapid</button>
+      <label class="radio"><input type="checkbox" id="autoStomp"> auto-stomp every 800ms (test window expiry)</label>
+    </section>
+
+    <section class="grp">
+      <h2>Curse items</h2>
+      <button id="btnPager" class="red">🔔 give on-call pager</button>
+      <span style="font-size:11px;color:var(--dim)">walk past a desk coworker → handoff. or wait 18s → “escalated”</span>
+    </section>
+
+    <section class="grp">
+      <h2>Boss taunt captions</h2>
+      <div id="tauntBtns"></div>
+    </section>
+
+    <section>
+      <h2>Share card generator</h2>
+      <label class="radio"><input type="radio" name="sh" value="win" checked> 🎉 escaped (LinkedIn humble-brag format)</label>
+      <label class="radio"><input type="radio" name="sh" value="dead"> 💀 fired (performance review format)</label>
+      <textarea id="shareOut" readonly></textarea>
+      <button id="btnCopy" class="grn">📋 copy to clipboard</button>
+      <span id="copyStatus" style="font-size:11px;margin-left:6px"></span>
+    </section>
+  </div>
+
+  <!-- ============ LIVE GAME + STATE ============ -->
+  <div>
+    <canvas id="game" width="1280" height="720"></canvas>
+    <pre id="state">booting…</pre>
+  </div>
+</main>
+
+<!-- ============ MEME CONTENT TABLES ============ -->
+<main style="grid-template-columns:1fr; padding-top:0;">
+  <section>
+    <h2>All game copy — single source of truth (js/game.js · js/levels.js)</h2>
+    <table class="memetable">
+      <tr><td>coworker bubbles</td><td class="chips" id="mCoworkers"></td></tr>
+      <tr><td>death messages</td><td class="chips" id="mDeaths"></td></tr>
+      <tr><td>combo escalation</td><td class="chips" id="mCombos"></td></tr>
+      <tr><td>boss taunts</td><td class="chips" id="mTaunts"></td></tr>
+      <tr><td>title tips rotator</td><td class="chips" id="mTips"></td></tr>
+      <tr><td>rank ladder (by deaths)</td><td id="mRanks"></td></tr>
+    </table>
+  </section>
+</main>
+
+<footer>regression harness: <a href="debug-loop.html" style="color:var(--blu)">debug-loop.html</a> · game: <a href="index.html" style="color:var(--blu)">index.html</a></footer>
+
+<script src="js/audio.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/game.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const G = () => window.__G;
+const M = () => window.__MEMES;
+
+/* ---- run control ---- */
+$('#btnStart').onclick = () => G().start();
+document.querySelectorAll('[data-warp]').forEach(b => b.onclick = () => G().warp(+b.dataset.warp));
+
+/* ---- death causes ---- */
+$('#btnKill').onclick = () => { const i = G().info(); if (i.state !== 'play') return flash('start/warp to play state first'); G().kill($('#cause').value); };
+$('#btnHeal').onclick = () => G().heal();
+
+/* ---- badge ---- */
+$('#btnBadge').onclick = () => G().badge();
+
+/* ---- combo lab ---- */
+$('#btnStomp').onclick = () => safePlay(() => G().stompHere());
+$('#btnCombo5').onclick = async () => {
+  for (let i = 0; i < 5; i++) { safePlay(() => G().stompHere()); await new Promise(r => setTimeout(r, 120)); }
+};
+let autoTimer = null;
+$('#autoStomp').onchange = e => {
+  clearInterval(autoTimer);
+  if (e.target.checked) autoTimer = setInterval(() => safePlay(() => G().stompHere()), 800);
+};
+
+/* ---- pager ---- */
+$('#btnPager').onclick = () => safePlay(() => G().pager());
+
+/* ---- taunt previews (pop over player) ---- */
+M().taunts.forEach(t => {
+  const b = document.createElement('button');
+  b.textContent = t;
+  b.onclick = () => safePlay(() => G().pop(t));
+  $('#tauntBtns').appendChild(b);
+});
+
+/* ---- share cards ---- */
+function refreshShare() {
+  const mode = document.querySelector('input[name=sh]:checked').value;
+  $('#shareOut').value = mode === 'win' ? M().shareWin() : M().shareDead();
+}
+document.querySelectorAll('input[name=sh]').forEach(r => r.onchange = refreshShare);
+refreshShare();
+$('#btnCopy').onclick = async () => {
+  try { await navigator.clipboard.writeText($('#shareOut').value); status('✓ copied — paste it into the timeline', 'ok'); }
+  catch { status('✗ clipboard blocked here — select & copy manually', 'warn'); }
+};
+function status(msg, cls) { const el = $('#copyStatus'); el.textContent = msg; el.className = cls; setTimeout(() => el.textContent = '', 3000); }
+
+/* ---- meme tables ---- */
+fill('mCoworkers', M().coworkers);
+fill('mDeaths', Object.entries(M().deaths).map(([k, v]) => k + ': ' + v));
+fill('mCombos', ['base: SYNERGIZED!'].concat(M().combos));
+fill('mTaunts', M().taunts);
+fill('mTips', M().tips);
+{
+  const rows = [[0, '0 deaths'], [1, '≤2 deaths'], [3, '≤4 deaths'], [9, '5+ deaths']]
+    .map(([d, lbl]) => `<tr><td>${lbl}</td><td style="color:${M().ranks(d)[1]}">${M().ranks(d)[0]}</td></tr>`).join('');
+  $('#mRanks').innerHTML = rows;
+}
+function fill(id, arr) { $( '#' + id).innerHTML = arr.map(x => `<span>${x}</span>`).join(''); }
+
+/* ---- helpers ---- */
+function safePlay(fn) {
+  const i = G().info();
+  if (i.state !== 'play') return flash('needs play state');
+  fn();
+}
+function flash(msg) { status(msg, 'warn'); }
+
+/* ---- live state readout ---- */
+setInterval(() => {
+  const i = G().info();
+  $('#state').textContent = JSON.stringify(i, null, 1);
+}, 250);
+</script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html><head>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head><body>
+<h3>[DEBUG-stap3] stapler: fire / intern / manager x2 / drone(jump-fire) / sustain</h3>
+<pre id="out">running…</pre>
+<canvas id="game" width="1280" height="720"></canvas>
+<script src="js/audio.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/game.js"></script>
+<script>
+/* ============================================================
+   [DEBUG-stap3] RED/GREEN loop for: "equip player with ranged weapon"
+   Geometry notes: staples drop ~310*t^2 px → flat range ≈250px.
+   HR drone floats at y≈300 → must jump-fire from the y=9 shelf.
+     A FIRE    — staple spawns, flies, despawns
+     B INTERN  — staples fold an intern (count −1)
+     C MGR     — two staples drop a manager
+     D DRONE   — jump+fire cycles pop the balloon
+     E SUSTAIN — continuous fire: no crash, score moves
+   ============================================================ */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function run() {
+  const out = [];
+  const log = s => { out.push(s); document.getElementById('out').textContent = out.join('\n'); };
+  const G = window.__G;
+  const FLOOR_Y = 13 * 48;
+
+  async function tapFire() { G.press('f', true); await sleep(45); G.press('f', false); }
+  async function fireUntil(condFn, timeoutMs) {
+    const t0 = performance.now();
+    while (performance.now() - t0 < timeoutMs) {
+      if (condFn()) return true;
+      await tapFire(); await sleep(320);
+    }
+    return condFn();
+  }
+
+  G.start();
+  await sleep(2800);
+
+  /* ---- A: spawn & despawn ---- */
+  G.tp(8 * 48, FLOOR_Y - 46);
+  await sleep(250);
+  await tapFire();
+  await sleep(60);
+  let i = G.info();
+  const spawned = i.staples >= 1;
+  let despawned = false;
+  const tA = performance.now();
+  while (performance.now() - tA < 3000 && !despawned) { await sleep(100); despawned = G.info().staples === 0; }
+  const fireOK = spawned && despawned;
+  log(`A(FIRE): inFlight=${spawned} expired=${despawned} → ${fireOK ? 'GREEN' : 'RED'}`);
+
+  /* ---- B: intern at (65,12); player on floor C just left of them ---- */
+  G.tp(3006, FLOOR_Y - 46);
+  await sleep(150);
+  const internsBefore = G.info().interns;
+  await fireUntil(() => G.info().interns === internsBefore - 1, 9000);
+  const internOK = internsBefore === 2 && G.info().interns === internsBefore - 1;
+  log(`B(INTERN): ${internsBefore} → ${G.info().interns} → ${internOK ? 'GREEN' : 'RED'}`);
+
+  /* ---- C: manager at (38,12); player on floor B, ~120px away, staples beat the charge ---- */
+  G.tp(1672, FLOOR_Y - 46);
+  await sleep(150);
+  const mgrsBefore = G.info().enemies;
+  await fireUntil(() => G.info().enemies < mgrsBefore, 11000);
+  i = G.info();
+  const mgrOK = mgrsBefore >= 1 && i.enemies === mgrsBefore - 1 && i.hearts >= 1;
+  log(`C(MGR): ${mgrsBefore} → ${i.enemies} hearts=${i.hearts} → ${mgrOK ? 'GREEN' : 'RED'}`);
+
+  /* ---- D: drone pop — stand on the y=9 shelf under its patrol, jump-fire ---- */
+  G.tp(2122, 9 * 48 - 46);
+  await sleep(200);
+  const dronesBefore = G.info().drones;
+  let dHit = false;
+  const tD = performance.now();
+  while (performance.now() - tD < 16000 && !dHit) {
+    if (G.info().grounded) {
+      G.press(' ', true);
+      await sleep(135);                       // mid-rise through the drone band
+      await tapFire();
+      G.press(' ', false);
+      await sleep(430);
+    } else await sleep(80);
+    dHit = G.info().drones === dronesBefore - 1;
+  }
+  const droneOK = dronesBefore === 1 && dHit;
+  log(`D(DRONE): ${dronesBefore} → ${G.info().drones} → ${droneOK ? 'GREEN' : 'RED'}`);
+
+  /* ---- E: sustain — live-fire at the 2 remaining managers until one drops ---- */
+  const scoreE = G.info().score;
+  const startEnemies = G.info().enemies;
+  // spot 1: manager at 76 (cx≈3672); spot 2: manager at 52 (cx≈2520)
+  for (const px of [3445, 2283]) {
+    G.tp(px, FLOOR_Y - 46);
+    await sleep(250);
+    await fireUntil(() => G.info().enemies < startEnemies, 8000);
+    if (G.info().enemies < startEnemies) break;
+  }
+  i = G.info();
+  /* player stands still the whole time → any score gain is a staple kill */
+  const sustainOK = i.state === 'play' && i.hearts >= 1 && i.score > scoreE;
+  log(`E(SUSTAIN): state=${i.state} score ${scoreE}→${i.score} enemies ${startEnemies}→${i.enemies} → ${sustainOK ? 'GREEN' : 'RED'}`);
+
+  const allGreen = fireOK && internOK && mgrOK && droneOK && sustainOK;
+  log(`=== STAPLER VERDICT: ${allGreen ? 'GREEN (ranged weapon live)' : 'RED'} ===`);
+  window.__STAPLER_VERDICT = allGreen ? 'GREEN' : 'RED';
+}
+run();
+</script></body></html>

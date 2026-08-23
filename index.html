@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f18">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>THE DAILY GRIND — a corporate escape platformer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0b0f18;
+    overflow: hidden;
+    position: fixed;
+    overscroll-behavior: none;
+    font-family: "Press Start 2P", monospace;
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: none;
+  }
+  #wrap {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  canvas { display: block; background: #0b0f18; }
+  /* touch controls */
+  #touch { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+  .tbtn {
+    position: absolute; bottom: 4vh;
+    width: 15vmin; height: 15vmin; min-width: 64px; min-height: 64px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.10);
+    border: 2px solid rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.7);
+    font-family: inherit; font-size: 3vmin;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: auto;
+    touch-action: none;
+  }
+  .tbtn:active { background: rgba(255,255,255,0.22); }
+  #tleft  { left: calc(4vw + env(safe-area-inset-left)); }
+  #tright { left: calc(4vw + 17vmin + env(safe-area-inset-left)); }
+  /* right thumb-diamond:  dash   down
+                           fire   jump */
+  #tjump  { right: calc(4vw + env(safe-area-inset-right)); bottom: 4vh; width: 18vmin; height: 18vmin; }
+  #tfire  { right: calc(4vw + 20vmin + env(safe-area-inset-right)); bottom: 4vh; font-size: 5.5vmin; }
+  #tdash  { right: calc(4vw + env(safe-area-inset-right)); bottom: 27vh; }
+  #tdown  { right: calc(4vw + 20vmin + env(safe-area-inset-right)); bottom: 27vh; }
+  /* contextual UI buttons (title staff-picker · end-screen share) */
+  .uibtn {
+    display: none; position: fixed; z-index: 12;
+    align-items: center; justify-content: center;
+    width: 13vmin; height: 13vmin; min-width: 56px; min-height: 56px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.10);
+    border: 2px solid rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.85);
+    font-family: inherit; font-size: 3.4vmin;
+    pointer-events: auto; touch-action: none;
+    -webkit-user-select: none; user-select: none;
+  }
+  .uibtn.show { display: flex; }
+  .uibtn:active { background: rgba(255,255,255,0.22); }
+  #charL { left: 14px; top: 50%; transform: translateY(-50%); }
+  #charR { right: 14px; top: 50%; transform: translateY(-50%); left: auto; }
+  #sharebtn {
+    left: 50%; transform: translateX(-50%); bottom: calc(5vh + env(safe-area-inset-bottom));
+    width: auto; height: auto; padding: 2.6vmin 5vmin; border-radius: 999px;
+    background: rgba(67,209,124,0.20); border-color: rgba(105,240,174,0.7); color: #b9f6ca;
+    font-size: 3.6vmin;
+  }
+  /* rotate-to-landscape hint for portrait phones */
+  #fsbtn {
+    position: fixed; right: calc(10px + env(safe-area-inset-right)); bottom: calc(10px + env(safe-area-inset-bottom));
+    z-index: 12; width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; font-size: 20px;
+    background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.22);
+    color: rgba(255,255,255,0.75);
+    cursor: pointer; pointer-events: auto; user-select: none; -webkit-user-select: none;
+    font-family: inherit;
+  }
+  #fsbtn:hover { background: rgba(255,255,255,0.18); }
+  @media (pointer: coarse) { #fsbtn { display: none; } }  /* phones have their own buttons */
+  #rotate {
+    display: none; position: fixed; inset: 0; z-index: 20;
+    background: rgba(11,15,24,0.88); color: #cfe3ff;
+    align-items: center; justify-content: center; flex-direction: column; gap: 3vh;
+    text-align: center; font-size: 12px; line-height: 2; pointer-events: none;
+  }
+  #rotate .phone { font-size: 40px; animation: rot 1.6s ease-in-out infinite alternate; }
+  @keyframes rot { from { transform: rotate(0deg); } to { transform: rotate(-90deg); } }
+  @media (pointer: coarse) and (orientation: portrait) {
+    #rotate { display: flex; }
+  }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="game"></canvas></div>
+<div id="touch">
+  <div class="tbtn" id="tleft">&#9664;</div>
+  <div class="tbtn" id="tright">&#9654;</div>
+  <div class="tbtn" id="tjump">JUMP</div>
+  <div class="tbtn" id="tdash">DASH</div>
+  <div class="tbtn" id="tfire">📎</div>
+  <div class="tbtn" id="tdown">&#9660;</div>
+</div>
+<div id="rotate">
+  <div class="phone">📱</div>
+  <div>ROTATE YOUR PHONE<br>the grind is horizontal</div>
+</div>
+<div class="uibtn" id="charL">&#9664;</div>
+<div class="uibtn" id="charR">&#9654;</div>
+<div class="uibtn" id="sharebtn">SHARE RUN</div>
+<div id="fsbtn" title="Fullscreen (F11)">&#x26F6;</div>
+<script src="js/audio.js?v=5"></script>
+<script src="js/levels.js?v=6"></script>
+<script src="js/game.js?v=31"></script>
+</body>
+</html>
