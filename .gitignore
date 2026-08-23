@@ -1,4 +1,8 @@
 # tooling / local artifacts
 .playwright-mcp/
+.wrangler/
 .pi/
+dist/
+dev-shots/
 .DS_Store
+node_modules/
