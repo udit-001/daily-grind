@@ -4,13 +4,15 @@ A corporate-office escape platformer that runs in any browser tab. No install, n
 
 ## Play it
 
-**Desktop:** clone or download this repo and open `index.html` in any modern browser. That's the whole setup.
+**Online:** [daily-grind-s5j.pages.dev](https://daily-grind-s5j.pages.dev) — nothing to install.
+
+**Desktop, offline:** clone or download this repo and open `index.html` in any modern browser.
 
 ```bash
 git clone https://github.com/udit-001/daily-grind.git
 ```
 
-**Phone:** serve the folder and open it from your browser (`python3 -m http.server`, then visit your machine's address from the phone). Touch controls appear on their own, and the game asks you to rotate to landscape.
+**Phone:** open the link above. Touch controls appear on their own, and the game asks you to rotate to landscape.
 
 ## What a run looks like
 
@@ -50,7 +52,7 @@ git clone https://github.com/udit-001/daily-grind.git
 
 ## The challenge loop
 
-Every share card ends with a link like `…/#c=14875~PRIYA`. Open someone's link and their score greets you on the title screen (`⚠ CHALLENGE: PRIYA POSTED 14875`), rides along as a live TARGET in your HUD, and announces `CHALLENGE LEAD!` the moment you pass it. Your share then carries your score, and the chain continues.
+Every share card ends with a link like `https://daily-grind-s5j.pages.dev/#c=14875~PRIYA`. Open someone's link and their score greets you on the title screen (`⚠ CHALLENGE: PRIYA POSTED 14875`), rides along as a live TARGET in your HUD, and announces `CHALLENGE LEAD!` the moment you pass it. Your share then carries your score, and the chain continues.
 
 Your staff pick and name sign every card; the office record and its holder are stamped on the title screen.
 
