@@ -306,41 +306,127 @@ const CAST = {
   manager: { name: 'MANAGEMENT', tint: '#ff8a80', opts: () => ({ shirt: PAL.suit || '#37474f', pants: '#263238', tie: '#c62828', hair: '#787878', angry: true }) },
   ceo:     { name: 'THE CEO', tint: '#ff5252', opts: () => ({ shirt: '#2f3240', pants: '#23232f', tie: '#ffb300', hair: '#3a3a44', skin: '#f2c19a', bigHead: true, angry: true }) },
 };
-const SCRIPTS = {
-  opening: [
-    { who: 'manager', text: '{name}. The Halewyn account. Client calls in ten minutes. Where is it?' },
-    { who: 'you', text: '...' },
-    { who: 'manager', text: "That's what I thought. Overtime. Tonight." },
-    { who: 'you', text: 'Actually... I quit.' },
-    { who: 'manager', text: 'Ha! Good one. See you at standup.' },
-    { who: 'you', text: '(Not this time. My exit interview starts NOW.)' },
-  ],
-  bossIntro: [
-    { who: 'ceo', text: 'Sit down, {name}.' },
-    { who: 'ceo', text: 'You cannot resign. I have decided this in a meeting.' },
-    { who: 'you', text: 'The exit door is right behind you.' },
-    { who: 'ceo', text: 'Then come and USE it, champ.' },
-  ],
-  victory: [
-    { who: 'ceo', text: 'Fine... FINE. Your badge works on the way out.' },
-    { who: 'you', text: "(It always did. I just needed you to say it.)" },
-    { who: 'ceo', text: 'And leave the stapler.' },
-    { who: 'you', text: '(No.)' },
-  ],
+/* ── writers-room verdict: surviving dialogue variants only ──
+   One variant per scene rolls per fresh run (startGame); respawns and
+   retries keep the roll. {name} and {client} fill at play time. */
+const CLIENT_POOL = ['HALEWYN', 'GRUMBLETHORPE & SONS', 'SYNERGYX', 'MUNDY GLOBAL',
+  'PAPERCLIP HOLDINGS', 'BLINTZ & ASSOCIATES', 'THE KETTLEBERRY GROUP', 'OMNICORP',
+  'WEXLER\u2013DROMGOOLE', 'PROSPERITY PARTNERS (INSOLVENT)', 'CRUNCHTIME ANALYTICS',
+  'STAPLETON & STAPLETON', 'MEGAPLODE'];
+const SCRIPT_POOL = {
+  intern: {
+    open: [[
+      { who: 'manager', text: '{name}. The {client} account. Client calls in ten minutes. Where is it?' },
+      { who: 'you', text: 'I don\u2019t have an account. Or a desk. HR gave me a beanbag and a password I\u2019m not allowed to reset.' },
+      { who: 'manager', text: 'The beanbag is a chair. Overtime. Tonight.' },
+      { who: 'you', text: 'Actually... I quit. And I\u2019m taking the beanbag. It knows my shape.' },
+      { who: 'manager', text: 'Ha! Good one. See you at standup.' },
+      { who: 'you', text: '(Not this time. First day. Last day. Perfect attendance.)' },
+    ]],
+    boss: [[
+      { who: 'ceo', text: 'Sit down, {name}.' },
+      { who: 'ceo', text: 'You cannot resign. Interns can\u2019t quit. That\u2019s like walking out of a movie trailer \u2014 you already agreed.' },
+      { who: 'you', text: 'I understood none of that, and I am leaving.' },
+      { who: 'ceo', text: 'Then come and USE it, champ.' },
+    ]],
+    win: [[
+      { who: 'ceo', text: 'Fine... FINE. Your badge works on the way out.' },
+      { who: 'you', text: '(It says VISITOR. It always said VISITOR.)' },
+      { who: 'ceo', text: 'And leave the stapler.' },
+      { who: 'you', text: '(No. It\u2019s my only career souvenir.)' },
+    ]],
+  },
+  priya: {
+    open: [[
+      { who: 'manager', text: '{name}. The {client} account. Client calls in ten minutes. Where is it?' },
+      { who: 'you', text: 'Filed as BUG-1043: \u201C{client} account missing.\u201D Severity: blocker. Assignee: anyone but me.' },
+      { who: 'manager', text: 'That\u2019s what I thought. Overtime. Tonight.' },
+      { who: 'you', text: 'Actually... I quit. Repro steps: show up Monday. Fails every Monday. 100% rate.' },
+      { who: 'manager', text: 'Ha! Good one. See you at standup.' },
+      { who: 'you', text: '(Not this time. Root cause found. It\u2019s this building.)' },
+    ]],
+    boss: [[
+      { who: 'ceo', text: 'Sit down, Priya.' },
+      { who: 'ceo', text: 'You cannot resign. I marked your resignation WONTFIX.' },
+      { who: 'you', text: 'It auto-reopens every sprint. Resignations are flaky like that.' },
+      { who: 'ceo', text: 'Then come and USE it, champ. QA the door.' },
+    ]],
+    win: [[
+      { who: 'ceo', text: 'Fine... FINE. Your badge works on the way out.' },
+      { who: 'you', text: '(Regression test passed: the door still opens. Miracles happen.)' },
+      { who: 'ceo', text: 'And leave the stapler.' },
+      { who: 'you', text: '(Logged as asset transfer. Denied. NO.)' },
+    ]],
+  },
+  chad: {
+    open: [[
+      { who: 'manager', text: '{name}. The {client} account. Client calls in ten minutes. Where is it?' },
+      { who: 'you', text: 'Closed it! Then upsold the client to our biggest competitor. Huge win. For them. Bittersweet!' },
+      { who: 'manager', text: 'That\u2019s what I thought. Overtime. Tonight.' },
+      { who: 'you', text: 'Actually... I quit! Big picture: you lose a top performer, gain a LinkedIn connection. Win-win!' },
+      { who: 'manager', text: 'Ha! Good one. See you at standup.' },
+      { who: 'you', text: '(Not this time. This walkout is going straight to the highlight reel.)' },
+    ]],
+    boss: [[
+      { who: 'ceo', text: 'Sit down, Chad.' },
+      { who: 'ceo', text: 'You cannot resign. You\u2019re my number one guy. I say that to four guys.' },
+      { who: 'you', text: 'Let\u2019s take this offline. Forever. I call it a strategic handoff.' },
+      { who: 'ceo', text: 'Then come and USE it, champ. Great curb appeal on that door.' },
+    ]],
+    win: [[
+      { who: 'ceo', text: 'Fine... FINE. Your badge works on the way out.' },
+      { who: 'you', text: '(This role was a great cultural fit. For the door.)' },
+      { who: 'ceo', text: 'And leave the stapler.' },
+      { who: 'you', text: '(No. Founders keep their cap table. I keep my stapler.)' },
+    ]],
+  },
+  meera: {
+    open: [[
+      { who: 'manager', text: '{name}. The {client} account. Client calls in ten minutes. Where is it?' },
+      { who: 'you', text: 'Let me file that under \u201Cthings we both know won\u2019t happen.\u201D Done! Still smiling!' },
+      { who: 'manager', text: 'That\u2019s what I thought. Overtime. Tonight.' },
+      { who: 'you', text: 'Actually... I quit! Still smiling. That\u2019s the scary part. Ask HR. Oh wait \u2014 I AM HR.' },
+      { who: 'manager', text: 'Ha! Good one. See you at standup.' },
+      { who: 'you', text: '(Not this time. I scheduled this resignation weeks ago. It\u2019s recurring.)' },
+    ]],
+    boss: [[
+      { who: 'ceo', text: 'Sit down, Meera.' },
+      { who: 'ceo', text: 'You cannot resign. We\u2019re a family here. A family I legally own.' },
+      { who: 'you', text: 'I wrote the policy on that. Filed under \u201Chostage situations, with snacks.\u201D' },
+      { who: 'ceo', text: 'Then come and USE it, champ.' },
+    ]],
+    win: [[
+      { who: 'ceo', text: 'Fine... FINE. Your badge works on the way out.' },
+      { who: 'you', text: '(Offboarding complete. Scheduled it myself. Weeks ago. With reminders.)' },
+      { who: 'ceo', text: 'And leave the stapler.' },
+      { who: 'you', text: '(It\u2019s evidence now. No.)' },
+    ]],
+  },
 };
+let runScript = null, runClient = '';
+function rollRunScript() {
+  const P = SCRIPT_POOL[AVATARS[avatarIdx].id] || SCRIPT_POOL.intern;
+  runScript = { open: pick(P.open), boss: pick(P.boss), win: pick(P.win) };
+  runClient = pick(CLIENT_POOL);
+}
+function scriptFor(scene) {
+  if (!runScript) rollRunScript();
+  return runScript[scene];
+}
+
 let dialogue = null;   // { lines, i, chars, doneT, onDone }
 function endPunchIn() {
   if (!charIntro) return;
   charIntro = 0;
   /* punch-in card done -> opening confrontation, THEN the day banner */
-  playDialogue(SCRIPTS.opening, () => {
+  playDialogue(scriptFor('open'), () => {
     banner = dayBannerStash; dayBannerStash = null;
     introT = Math.min(introT, 0.9);
   });
 }
 function playDialogue(lines, onDone) {
   dialogue = {
-    lines: lines.map(l => ({ ...l, text: l.text.replace('{name}', empName()) })),
+    lines: lines.map(l => ({ ...l, text: l.text.replace('{name}', empName()).replace('{client}', runClient || 'HALEWYN') })),
     i: 0, chars: 0, holdT: 0, onDone: onDone || null,
   };
 }
@@ -668,7 +754,7 @@ function loadLevel(i, opts = {}) {
   }
   if (!opts.ambient && def.boss && !bossIntroPlayed) {
     bossIntroPlayed = true;
-    playDialogue(SCRIPTS.bossIntro, () => { introT = Math.max(introT, 1.4); });
+    playDialogue(scriptFor('boss'), () => { introT = Math.max(introT, 1.4); });
   }
 }
 
@@ -964,14 +1050,14 @@ function collect(pk) {
       addPop(pk.x + 15, pk.y - 8, 'MORALE +1 (INSTEAD OF A RAISE)', '#f48fb1');
     } else {
       totals.score += 150;
-      addPop(pk.x + 15, pk.y - 8, '+150 DONUT BREAK!', '#f48fb1');
+      addPop(pk.x + 15, pk.y - 8, '+150 ENJOY EACH DONUT EQUALLY', '#f48fb1');
     }
     SFX.donut();
     sparkle(pk.x + 15, pk.y + 16, '#f48fb1', 9);
   } else if (pk.kind === 'stapler') {
     player.hasStapler = true; runHasStapler = true;
     totals.score += 100;
-    addPop(pk.x + 15, pk.y - 12, 'STAPLER GET!', '#ff8a80', 15);
+    addPop(pk.x + 15, pk.y - 12, 'STAPLER GET! (RED. OBVIOUSLY.)', '#ff8a80', 15);
     addPop(pk.x + 15, pk.y + 14, 'F OR \uD83D\uDCCE TO FIRE', '#cfe3ff', 9);
     SFX.key();
     sparkle(pk.x + 15, pk.y + 16, '#ff8a80', 12);
@@ -1408,7 +1494,7 @@ function updateIntern(n, dt) {
   n.ph += dt * (n.fleeing ? 15 : 8);
   if (n.y > lvl.pxH + 120) {
     n.dead = true; totals.score += 50;
-    addPop(clamp(n.cx, camX + 40, camX + VIEW_W - 40), lvl.pxH - 60, '+50 OOPS', '#ffe57f');
+    addPop(clamp(n.cx, camX + 40, camX + VIEW_W - 40), lvl.pxH - 60, '+50 MY BAD', '#ffe57f');
   }
   if (playerVulnerable() && rectHit(player, n, 4)) {
     const stomp = player.vy > 140 && (player.prevY + player.h) <= n.y + n.h * 0.4;
@@ -1616,7 +1702,7 @@ function updateStaples(dt) {
         });
         if ((boss.pingCd || 0) <= 0) {
           SFX.staple();
-          addPop(boss.cx, boss.y - 44, "CLANK! NOT STUNNED", '#b0bec5', 10);
+          addPop(boss.cx, boss.y - 44, 'CLANK! DRY CLEAN ONLY', '#b0bec5', 10);
           boss.pingCd = 0.3;
         }
       }
@@ -1796,7 +1882,7 @@ function killBoss() {
   const b = boss;
   b.dead = true; b.dying = 0; b.vy = -350;
   totals.score += 2000;
-  addPop(b.cx, b.y - 24, 'YOU ARE FREE!', '#ffd54f', 17);
+  addPop(b.cx, b.y - 24, pick(['YOU ARE FREE!', 'BRUTAL. BUT FAIR.']), '#ffd54f', 17);
   SFX.thud();
   setTimeout(() => SFX.fanfare(), 500);
   Sound.stopSong();
@@ -1808,7 +1894,7 @@ function killBoss() {
   lvl.door = makeDoor(lvl.pxW / 2, 13 * T);
   lvl.door.locked = false;
   addPop(lvl.pxW / 2, 9.6 * T, 'EXIT UNLOCKED!', '#69f0ae', 15);
-  playDialogue(SCRIPTS.victory);
+  playDialogue(scriptFor('win'));
 }
 
 /* ---------------- ambient fx ---------------- */
@@ -1908,6 +1994,7 @@ function startGame() {
   runHasStapler = false;
   bossIntroPlayed = false;
   curHint = null;
+  rollRunScript();   /* fresh run: one dialogue variant + client per scene */
   /* phones: the tap that signs the staff card IS the user gesture — ride it
      into fullscreen so the run starts immersive (iOS rejection is swallowed
      inside toggleFullscreen; the game still plays windowed there) */
@@ -3311,7 +3398,7 @@ function render(dt) {
     g.fillRect(0, 0, VIEW_W, VIEW_H);
   }
 
-  if (boss && bossIntroT > 0) {
+  if (boss && bossIntroT > 0 && !dialogue) {   /* dialogue letterbox owns the screen */
     const k = clamp(bossIntroT / 0.4, 0, 1);
     g.fillStyle = 'rgba(8,10,16,1)';
     g.fillRect(0, 0, VIEW_W, 70 * k);
@@ -3343,11 +3430,29 @@ function frame(ts) {
 resetTotals();
 loadLevel(0, { ambient: true });
 state = 'title';
-/* dev/QA: ?screen=select parks on a screen for screenshots (harmless in prod) */
+/* dev/QA: ?screen=select parks on a screen; ?dlgtest=N rolls avatar N's opening
+   dialogue and stamps the result into the DOM (both harmless in prod) */
 const __park = (location.search.match(/[?&]screen=(title|select|play)/) || [])[1];
 if (__park) {
   if (__park === 'select') state = 'select';
   else if (__park === 'play') startGame();
+}
+const __dlgt = (location.search.match(/[?&]dlgtest=(\d)/) || [])[1];
+if (__dlgt) {
+  setTimeout(() => {
+    setAvatar(+__dlgt);
+    startGame();
+    charIntro = 0.5;
+    /* headless rAF is throttled — step the loop manually for a deterministic run */
+    for (let i = 0; i < 20; i++) { update(0.05); render(0.05); }
+    if (dialogue) dialogue.holdT = -600;
+    const el = document.createElement('div');
+    el.id = 'dlgresult';
+    el.textContent = 'AV' + __dlgt + '|' + (dialogue
+      ? dialogue.lines[dialogue.i].who + '|' + dialogue.lines.length + '|' + dialogue.lines[dialogue.i].text
+      : 'none');
+    document.body.appendChild(el);
+  }, 800);
 }
 requestAnimationFrame(frame);
 
@@ -3392,7 +3497,7 @@ Object.assign(window.__G, {
   bosshp: n => { if (boss) boss.hp = Math.max(1, n); },
   give: () => { if (player) { player.hasStapler = true; runHasStapler = true; } },
   popList: () => pops.map(p => ({ text: p.text, x: Math.round(p.x), y: Math.round(p.y) })),
-  dlg: () => dialogue ? { i: dialogue.i, total: dialogue.lines.length, chars: Math.floor(dialogue.chars), who: dialogue.lines[dialogue.i].who } : null,
+  dlg: () => dialogue ? { i: dialogue.i, total: dialogue.lines.length, chars: Math.floor(dialogue.chars), who: dialogue.lines[dialogue.i].who, text: dialogue.lines[dialogue.i].text } : null,
   dlgHold: () => { if (dialogue) { dialogue.holdT = -600; } },
   avatar: i => { if (i !== undefined) setAvatar(i); return { idx: avatarIdx, name: AVATARS[avatarIdx].name }; },
   identity: () => ({ employee, challenge, bestScore, bestName }),
