@@ -18,7 +18,7 @@ const VIEW_H = 720;
 let VIEW_W = 1280;
 const T = TILE;
 const GRAV = 2600, MAXFALL = 1350;
-const MOVE = 352, ACCEL = 2900, AIR_ACCEL = 1950, FRICTION = 2600;
+const MOVE = 352, ACCEL = 3300, AIR_ACCEL = 2300, FRICTION = 5600;
 const JUMPV = 870, DJUMPV = 800;
 const COYOTE = 0.1, BUFFER = 0.13;
 const DASH_V = 790, DASH_T = 0.16, DASH_CD = 0.65;
@@ -149,7 +149,7 @@ window.addEventListener('keydown', e => {
   if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); return; }
   if (charIntro > 0) { endPunchIn(); return; }
   if (dialogue) {
-    if (e.key === 'Escape') { const cb = dialogue.onDone; dialogue = null; if (cb) cb(); }
+    if (e.key === 'Escape') { const cb = dialogue.onDone; dialogue = null; dlgSkipRect = null; if (cb) cb(); }
     else advanceDialogue();
     return;
   }
@@ -184,7 +184,12 @@ cv.addEventListener('pointerdown', e => {
   if (paused) { handlePauseMenuTap(__vx, __vy); return; }   /* menu buttons only — no accidental resume */
   if (pauseBtnHit(__vx, __vy)) { togglePause(); SFX.click(); buzz(10); return; }
   if (charIntro > 0) { endPunchIn(); return; }
-  if (dialogue) { advanceDialogue(); return; }
+  if (dialogue) {
+    if (dlgSkipRect && __vx >= dlgSkipRect.x && __vx <= dlgSkipRect.x + dlgSkipRect.w &&
+        __vy >= dlgSkipRect.y && __vy <= dlgSkipRect.y + dlgSkipRect.h) skipDialogue();
+    else advanceDialogue();
+    return;
+  }
   if (state === 'select') { handleSelectTap(e); return; }
   onConfirm();
 });
@@ -308,11 +313,14 @@ let camX = 0, camShake = 0, shakeX = 0, shakeY = 0;
 let freezeT = 0, fadeT = 0;
 let banner = null;
 let introT = 0, bossIntroT = 0, clearT = 0;
-let charIntro = 0, dayBannerStash = null;
+let charIntro = 0, charIntroEl = 0, dayBannerStash = null;
 
 /* ---------------- story mode: cinematic dialogue scenes ----------------
-   bottom panel · speaker tag + portrait · typewriter text · any key advances.
-   world freezes while a scene plays; onDone resumes whatever queued it. */
+   bottom panel · speaker tag + portrait · typewriter text · PLAYER-PACED:
+   lines never auto-advance (a line that vanishes mid-read trains players
+   to tune story out). any key/tap finishes typing, next input advances,
+   ESC or the SKIP pill leaves the whole scene. world freezes meanwhile;
+   onDone resumes whatever queued it. */
 const CAST = {
   you:     { name: () => empName(), tint: '#ffd54f', opts: () => avatarOpts() },
   manager: { name: 'MANAGEMENT', tint: '#ff8a80', opts: () => ({ shirt: PAL.suit || '#37474f', pants: '#263238', tie: '#c62828', hair: '#787878', angry: true }) },
@@ -426,7 +434,8 @@ function scriptFor(scene) {   /* lazily rolls against the CURRENT avatar — cal
   return runScript[scene];
 }
 
-let dialogue = null;   // { lines, i, chars, doneT, onDone }
+let dialogue = null;   // { lines, i, chars, pulse, onDone }
+let dlgSkipRect = null;   /* SKIP pill hit region (touch parity — phones have no ESC) */
 function endPunchIn() {
   if (!charIntro) return;
   charIntro = 0;
@@ -438,31 +447,39 @@ function endPunchIn() {
 }
 function playDialogue(lines, onDone) {
   dialogue = {
-    lines: lines.map(l => ({ ...l, text: l.text.replace('{name}', empName()).replace('{client}', runClient || CLIENT_POOL[0]) })),
-    i: 0, chars: 0, holdT: 0, onDone: onDone || null,
+    lines: lines.map(l => ({ ...l, text: l.text.replace('{name}', empName()).replace('{client}', runClient || CLIENT_POOL[0]).replace(/\bThe THE\b/g, 'THE') })),
+    i: 0, chars: 0, pulse: 0.28, onDone: onDone || null,
   };
+  dlgSkipRect = null;
+}
+function skipDialogue() {
+  if (!dialogue) return;
+  const cb = dialogue.onDone; dialogue = null; dlgSkipRect = null;
+  SFX.click();
+  if (cb) cb();
 }
 function advanceDialogue() {
   if (!dialogue) return;
+  Sound.resume();
   const line = dialogue.lines[dialogue.i];
-  if (dialogue.chars < line.text.length) dialogue.chars = line.text.length;   // finish typing first
+  if (dialogue.chars < line.text.length) dialogue.chars = line.text.length;   // first tap: reveal the full line
   else {
     dialogue.i++;
-    dialogue.chars = 0; dialogue.holdT = 0;
+    dialogue.chars = 0; dialogue.pulse = 0.28;
     if (dialogue.i >= dialogue.lines.length) {
-      const cb = dialogue.onDone; dialogue = null;
+      const cb = dialogue.onDone; dialogue = null; dlgSkipRect = null;
       if (cb) cb();
+    } else {
+      SFX.click();   /* audio receipt: the tap did something */
     }
   }
 }
 function updateDialogue(dt) {
   if (!dialogue) return;
+  if (dialogue.pulse > 0) dialogue.pulse -= dt;
   const line = dialogue.lines[dialogue.i];
-  if (dialogue.chars < line.text.length) dialogue.chars = Math.min(line.text.length, dialogue.chars + dt * 55);
-  else {
-    dialogue.holdT += dt;
-    if (dialogue.holdT > 2.4) advanceDialogue();   // auto-advance: never stuck
-  }
+  if (dialogue.chars < line.text.length) dialogue.chars = Math.min(line.text.length, dialogue.chars + dt * 70);
+  /* deliberately NO auto-advance: the scene moves at the player's pace */
 }
 function wrapDialogue(text, maxW) {
   const g = cv.getContext('2d');
@@ -492,10 +509,11 @@ function drawDialogue(g) {
   g.fillRect(0, BAR_T - 3, VIEW_W, 3);
   g.fillRect(0, VIEW_H - BAR_B, VIEW_W, 3);
 
-  /* ── top bar: portrait + speaker tag ── */
+  /* ── top bar: portrait + speaker tag (+ SKIP pill, far right) ── */
   g.save();
   g.translate(66, BAR_T - 6);
-  g.scale(1.55, 1.55);
+  const ppl = 1 + Math.max(0, d.pulse || 0) * 1.1;   /* portrait pops when the speaker changes */
+  g.scale(1.55 * ppl, 1.55 * ppl);
   drawEmployee(g, 0, 0, 1, perf * 7, Object.assign({ idleTap: true }, cast.opts()));
   g.restore();
   g.fillStyle = 'rgba(255,255,255,0.07)';
@@ -507,6 +525,14 @@ function drawDialogue(g) {
   g.beginPath(); g.roundRect(112, BAR_T - 58, nw, 30, 6); g.stroke();
   text(g, nm, 112 + nw / 2, BAR_T - 43, 11, cast.tint);
   text(g, line.who === 'you' ? '(that\u2019s you)' : '', 112 + nw + 16, BAR_T - 43, 8, 'rgba(207,227,255,0.4)', 'left', false);
+  /* SKIP pill — visible exit for every input method, not just keyboards */
+  const skW = 118, skH = 30, skX = VIEW_W - skW - 36, skY = BAR_T - 58;
+  g.fillStyle = 'rgba(11,15,24,0.88)';
+  g.beginPath(); g.roundRect(skX, skY, skW, skH, 6); g.fill();
+  g.strokeStyle = 'rgba(207,227,255,0.4)'; g.lineWidth = 2;
+  g.beginPath(); g.roundRect(skX, skY, skW, skH, 6); g.stroke();
+  text(g, '\u00BB SKIP', skX + skW / 2, skY + skH / 2 + 1, 9, 'rgba(207,227,255,0.78)');
+  dlgSkipRect = { x: skX, y: skY, w: skW, h: skH };
 
   /* ── bottom bar: typewriter body ── */
   const shown = line.text.slice(0, Math.floor(d.chars));
@@ -528,7 +554,8 @@ function drawDialogue(g) {
   } else if (!typing && Math.sin(perf * 6) > -0.2) {
     text(g, '\u25BC', VIEW_W - 56, VIEW_H - 26, 12, cast.tint);
   }
-  text(g, 'ANY KEY \u00B7 ESC SKIP', VIEW_W - tx, VIEW_H - 12, 7, 'rgba(207,227,255,0.35)', 'right', false);
+  text(g, (d.i + 1) + '/' + d.lines.length, tx, VIEW_H - 12, 8, 'rgba(207,227,255,0.45)', 'left', false);
+  text(g, typing ? 'ANY KEY \u00B7 REVEAL' : 'ANY KEY \u00B7 NEXT \u00B7 \u00ABSKIP\u00BB TOP RIGHT', VIEW_W - tx, VIEW_H - 12, 7, 'rgba(207,227,255,0.35)', 'right', false);
   g.restore();
 }
 let titlePan = 0, perf = 0;
@@ -1192,7 +1219,8 @@ function updatePlayer(dt) {
 
   if (p.dashT > 0) {
     p.dashT -= dt;
-    p.vx = p.dashDir * DASH_V;
+    /* clamp on expiry: no post-dash skid carrying players into shredders */
+    p.vx = p.dashT <= 0 ? p.dashDir * MOVE : p.dashDir * DASH_V;
     p.vy = 0;
     p.face = p.dashDir;
     ghosts.push({ x: p.x, y: p.y, face: p.face, t: 0.22 });
@@ -1218,7 +1246,7 @@ function updatePlayer(dt) {
       p.idleT = 0;
     } else {
       p.idleT += dt;
-      const fr = (p.grounded ? FRICTION : 900) * dt;
+      const fr = (p.grounded ? FRICTION : 1500) * dt;
       p.vx = Math.abs(p.vx) <= fr ? 0 : p.vx - Math.sign(p.vx) * fr;
     }
     p.vy += GRAV * dt;
@@ -2046,9 +2074,11 @@ function startGame() {
      inside toggleFullscreen; the game still plays windowed there) */
   if (window.matchMedia && matchMedia('(pointer: coarse)').matches && !inFullscreen()) toggleFullscreen();
   loadLevel(0);
-  /* jetpack-joyride-style punch-in card: the chosen staffer's moment */
+  /* jetpack-joyride-style punch-in card: the chosen staffer's moment.
+     it WAITS for the player — no silent timeout yanking the story away */
   dayBannerStash = banner; banner = null;
   charIntro = 4.2;
+  charIntroEl = 0;
   SFX.click();
 }
 function retryLevel(manual) {   /* keeps this run's rolled script + client — never re-roll here */
@@ -3114,7 +3144,7 @@ const INTRO_QUOTES = [
   'HERE TO HELP. ALLEGEDLY.',
 ];
 function drawCharIntro(g) {
-  const t = 4.2 - charIntro;
+  const t = charIntroEl;
   const a = clamp(t / 0.25, 0, 1);
   g.save();
   g.fillStyle = `rgba(8,10,16,${0.92 * a})`;
@@ -3134,7 +3164,7 @@ function drawCharIntro(g) {
   text(g, AVATARS[avatarIdx].name.split(' \u00B7 ')[1] || AVATARS[avatarIdx].name, nx, VIEW_H * 0.445, 13, AVATARS[avatarIdx].tint);
   text(g, '\u201C' + INTRO_QUOTES[avatarIdx] + '\u201D', nx, VIEW_H * 0.53, 11, 'rgba(255,255,255,0.8)');
   text(g, AVATARS[avatarIdx].blurb, nx, VIEW_H * 0.60, 8, AVATARS[avatarIdx].tint);
-  /* progress + skip hint */
+  /* progress fills once, then the card simply waits — no fake countdown */
   const p = clamp(t / 4.2, 0, 1);
   g.fillStyle = 'rgba(255,255,255,0.15)';
   g.fillRect(nx - 150, VIEW_H * 0.68, 300, 6);
@@ -3309,8 +3339,9 @@ function update(dt) {
   if (state === 'select') { updateFx(dt); return; }
   if (dialogue) { updateDialogue(dt); updateFx(dt); return; }
   if (charIntro > 0) {
-    charIntro -= dt;
-    if (charIntro <= 0) endPunchIn();
+    /* punch-in card holds until ANY input ends it — a distracted player who
+       comes back late still gets the intro instead of a story that left */
+    charIntroEl += dt;
     updateFx(dt);
     return;
   }
@@ -3552,7 +3583,6 @@ if (__dlgt) {
     charIntro = 0.5;
     /* headless rAF is throttled — step the loop manually for a deterministic run */
     for (let i = 0; i < 20; i++) { update(0.05); render(0.05); }
-    if (dialogue) dialogue.holdT = -600;
     const el = document.createElement('div');
     el.id = 'dlgresult';
     el.textContent = 'AV' + __dlgt + '|' + (dialogue
@@ -3600,12 +3630,12 @@ window.__MEMES = {
 Object.assign(window.__G, {
   kill: cause => hurtPlayer(cause),
   kit: () => AVATARS[avatarIdx].kit,
-  punch: v => { charIntro = (v === undefined ? 4.2 : v); },
+  punch: v => { charIntro = (v === undefined ? 4.2 : v); charIntroEl = 0; },
   bosshp: n => { if (boss) boss.hp = Math.max(1, n); },
   give: () => { if (player) { player.hasStapler = true; runHasStapler = true; } },
   popList: () => pops.map(p => ({ text: p.text, x: Math.round(p.x), y: Math.round(p.y) })),
   dlg: () => dialogue ? { i: dialogue.i, total: dialogue.lines.length, chars: Math.floor(dialogue.chars), who: dialogue.lines[dialogue.i].who, text: dialogue.lines[dialogue.i].text } : null,
-  dlgHold: () => { if (dialogue) { dialogue.holdT = -600; } },
+  dlgHold: () => { if (dialogue) dialogue.chars = 1e9; },   /* reveal full line instantly */
   avatar: i => { if (i !== undefined) setAvatar(i); return { idx: avatarIdx, name: AVATARS[avatarIdx].name }; },
   identity: () => ({ employee, challenge, bestScore, bestName }),
   tp: (x, y) => { if (player) { player.x = x; player.y = y; player.vx = 0; player.vy = 0; player.prevY = y; player.ride = null; } },

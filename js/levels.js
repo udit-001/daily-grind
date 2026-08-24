@@ -84,7 +84,7 @@ const LEVELS = [
       a.rect('#', 0, 1, 0, 14);
       a.rect('#', 95, 1, 95, 14);
       a.rect('#', 1, 13, 26, 14);            // floor A
-      a.rect('#', 38, 13, 66, 14);           // floor B
+      a.rect('#', 31, 13, 66, 14);           // floor B (gap after checkpoint: 4 tiles)
       a.rect('#', 70, 13, 94, 14);           // floor C
       /* warm-up against the belt */
       a.put('P', 1, 12); a.put('S', 3, 12); a.put('o', 5, 12); a.put('c', 8, 12);
@@ -92,9 +92,10 @@ const LEVELS = [
       a.row('<', 16, 20, 12); a.put('^', 18, 12);
       a.put('i', 23, 12);
       a.put('k', 25, 12);
-      /* badge shaft (climb for sky loot; movers = casual bypass) */
-      a.rect('#', 26, 4, 26, 12);
-      a.rect('#', 38, 5, 38, 12);
+      /* badge shaft (climb for sky loot; walls hang from the ceiling,
+         ground route stays fully open — run & jump, no lintel traps) */
+      a.rect('#', 26, 1, 26, 7);
+      a.rect('#', 38, 1, 38, 8);
       a.row('-', 30, 32, 10); a.row('-', 30, 32, 6);
       a.put('F', 30, 5); a.put('D', 32, 5);
       a.put('h', 31, 7);
