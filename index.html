@@ -84,7 +84,11 @@
     background: rgba(67,209,124,0.20); border-color: rgba(105,240,174,0.7); color: #b9f6ca;
     font-size: 3.6vmin;
   }
-  /* rotate-to-landscape hint for portrait phones */
+  /* rotate-to-landscape GATE for portrait phones — a true modal:
+     swallows every tap so nothing beneath it can be triggered.
+     All sizes are clamp()'d off vmin so the composition holds its
+     proportions on any aspect ratio; safe-area padding keeps it
+     clear of notches and home indicators. */
   #fsbtn {
     position: fixed; right: calc(10px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top));
     z-index: 12; width: 44px; height: 44px;
@@ -99,13 +103,48 @@
   #fsbtn:hover { background: rgba(255,255,255,0.18); }
   #fsbtn.show { display: flex; }
   #rotate {
-    display: none; position: fixed; inset: 0; z-index: 20;
-    background: rgba(11,15,24,0.88); color: #cfe3ff;
-    align-items: center; justify-content: center; flex-direction: column; gap: 3vh;
-    text-align: center; font-size: 12px; line-height: 2; pointer-events: none;
+    display: none; position: fixed; inset: 0; z-index: 30;
+    background: radial-gradient(130% 130% at 50% 38%, #131b2b 0%, #0b0f18 72%);
+    color: #cfe3ff;
+    align-items: center; justify-content: center; flex-direction: column;
+    gap: clamp(16px, 4vmin, 36px);
+    padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
+             max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+    text-align: center;
+    pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none;
   }
-  #rotate .phone { font-size: 40px; animation: rot 1.6s ease-in-out infinite alternate; }
-  @keyframes rot { from { transform: rotate(0deg); } to { transform: rotate(-90deg); } }
+  /* CSS-drawn device — crisp at any size, matches the .tbtn border language */
+  #rotate .phone {
+    position: relative;
+    width: clamp(52px, 13vmin, 96px);
+    aspect-ratio: 5 / 9;
+    border: clamp(3px, 1vmin, 5px) solid rgba(207,227,255,0.85);
+    border-radius: clamp(11px, 2.8vmin, 20px);
+    animation: rot 2.4s cubic-bezier(.65,0,.35,1) infinite alternate;
+  }
+  #rotate .phone::before {  /* earpiece slot */
+    content: ''; position: absolute; top: 8%; left: 50%;
+    width: 34%; height: clamp(2px, 0.8vmin, 4px);
+    transform: translateX(-50%);
+    border-radius: 999px; background: rgba(207,227,255,0.5);
+  }
+  #rotate .phone::after {   /* faint screen glow, hints the world inside */
+    content: ''; position: absolute; left: 16%; right: 16%; top: 20%; bottom: 20%;
+    border-radius: 4px;
+    background: linear-gradient(180deg, transparent 0%, rgba(105,240,174,0.10) 50%, transparent 100%);
+  }
+  /* rotate → dwell in landscape (so the message reads) → ease back */
+  @keyframes rot {
+    from { transform: rotate(0deg); }
+    45%  { transform: rotate(-90deg); }
+    to   { transform: rotate(-90deg); }
+  }
+  #rotate .rt-title { font-size: clamp(13px, 3.8vmin, 22px); line-height: 1.9; letter-spacing: 0.08em; }
+  #rotate .rule {
+    width: clamp(44px, 15vmin, 110px); height: 2px;
+    background: #69f0ae; opacity: 0.55; border-radius: 999px;
+  }
+  #rotate .rt-sub { font-size: clamp(10px, 2.5vmin, 14px); line-height: 1.8; opacity: 0.55; }
   @media (pointer: coarse) and (orientation: portrait) {
     #rotate { display: flex; }
   }
@@ -121,9 +160,11 @@
   <div class="tbtn" id="tfire">📎</div>
   <div class="tbtn" id="tdown">&#9660;</div>
 </div>
-<div id="rotate">
-  <div class="phone">📱</div>
-  <div>ROTATE YOUR PHONE<br>the grind is horizontal</div>
+<div id="rotate" role="dialog" aria-label="Rotate your phone to play">
+  <div class="phone"></div>
+  <div class="rt-title">ROTATE YOUR PHONE</div>
+  <div class="rule"></div>
+  <div class="rt-sub">the grind is horizontal</div>
 </div>
 <div class="uibtn" id="charL">&#9664;</div>
 <div class="uibtn" id="charR">&#9654;</div>
@@ -131,6 +172,6 @@
 <div id="fsbtn" title="Fullscreen (F11)">&#x26F6;</div>
 <script src="js/audio.js?v=6"></script>
 <script src="js/levels.js?v=10"></script>
-<script src="js/game.js?v=49"></script>
+<script src="js/game.js?v=50"></script>
 </body>
 </html>
