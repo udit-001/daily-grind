@@ -93,7 +93,7 @@ function makeVignette() {
   rg.addColorStop(1, 'rgba(10,14,22,0.42)');
   vg.fillStyle = rg; vg.fillRect(0, 0, VIEW_W, VIEW_H);
 }
-function applyViewport() {
+function applyViewport() {   /* also rebuilds the vignette to match the new width */
   VIEW_W = Math.max(1280, Math.min(1920, Math.round(VIEW_H * window.innerWidth / window.innerHeight)));
   cv.width = VIEW_W; cv.height = VIEW_H;
   makeVignette();
@@ -409,7 +409,7 @@ function rollRunScript() {
   runScript = { open: pick(P.open), boss: pick(P.boss), win: pick(P.win) };
   runClient = pick(CLIENT_POOL);
 }
-function scriptFor(scene) {
+function scriptFor(scene) {   /* lazily rolls against the CURRENT avatar — call only after startGame */
   if (!runScript) rollRunScript();
   return runScript[scene];
 }
@@ -426,7 +426,7 @@ function endPunchIn() {
 }
 function playDialogue(lines, onDone) {
   dialogue = {
-    lines: lines.map(l => ({ ...l, text: l.text.replace('{name}', empName()).replace('{client}', runClient || 'HALEWYN') })),
+    lines: lines.map(l => ({ ...l, text: l.text.replace('{name}', empName()).replace('{client}', runClient || CLIENT_POOL[0]) })),
     i: 0, chars: 0, holdT: 0, onDone: onDone || null,
   };
 }
@@ -2005,7 +2005,7 @@ function startGame() {
   charIntro = 4.2;
   SFX.click();
 }
-function retryLevel(manual) {
+function retryLevel(manual) {   /* keeps this run's rolled script + client — never re-roll here */
   totals.score = levelStartScore;
   loadLevel(curLevel);
   if (manual) addPop(player.cx, player.y - 22, 'RESTARTED', '#cfe3ff');
@@ -3193,7 +3193,11 @@ function update(dt) {
   if (state === 'title') {
     titlePan += dt;
     if (lvl) {
-      camX = (titlePan * 42) % Math.max(1, lvl.pxW - VIEW_W);
+      {
+        const b = camBounds();
+        const span = b[1] - b[0];
+        camX = span > 0 ? b[0] + (titlePan * 42) % span : b[0];   /* centered when the arena is narrower than the view */
+      }
       updatePlanes(dt);
       updateFx(dt);
     }
@@ -3435,7 +3439,7 @@ state = 'title';
 const __park = (location.search.match(/[?&]screen=(title|select|play)/) || [])[1];
 if (__park) {
   if (__park === 'select') state = 'select';
-  else if (__park === 'play') startGame();
+  else if (__park === 'play') { startGame(); charIntro = 0; dialogue = null; }
 }
 const __dlgt = (location.search.match(/[?&]dlgtest=(\d)/) || [])[1];
 if (__dlgt) {
