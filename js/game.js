@@ -208,18 +208,16 @@ function syncUIButtons() {
   if (uiBtns.share) uiBtns.share.classList.toggle('show', state === 'win' || state === 'gameover');
   const tfire = document.getElementById('tfire');
   if (tfire) tfire.style.opacity = (player && player.hasStapler) ? '' : '0.35';   /* dimmed until grabbed */
-  /* fullscreen toggle: visible on menus/screens, hidden during play/intro so it
-     never covers the HUD (hearts/combo/score live in the top corners).
-     The staff-select screen sets its own full-screen overlay, so only the
-     character ‹ › arrows (and a tap-to-sign) belong there — hide it here too. */
+  /* Story cinematics (punch-in card + dialogue letterbox) are watch-mode:
+     no controls needed. Hide every touch button and the fullscreen toggle
+     so the letterbox reads clean. Staff-select keeps only its own ‹ › arrows. */
+  const cinematic = charIntro > 0 || !!dialogue;
   const fs = document.getElementById('fsbtn');
-  if (fs) fs.classList.toggle('show', state !== 'play' && state !== 'intro' && state !== 'select');
-  /* staff-select already has its own mid-screen ‹ › arrows — hide the bottom
-     movement arrows there so the two never double up on mobile */
-  const hideMove = state === 'select';
-  for (const id of ['tleft', 'tright']) {
+  if (fs) fs.classList.toggle('show', state !== 'play' && state !== 'intro' && state !== 'select' && !cinematic);
+  const hideTouch = state === 'select' || cinematic;
+  for (const id of ['tleft', 'tright', 'tjump', 'tdash', 'tdown', 'tfire']) {
     const el = document.getElementById(id);
-    if (el) el.style.display = hideMove ? 'none' : '';
+    if (el) el.style.display = hideTouch ? 'none' : '';
   }
 }
 
