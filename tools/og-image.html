@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  .px { font-family: "Press Start 2P", monospace; }
+  /* office-window backdrop pane */
+  .win { width: 150px; height: 112px; background: linear-gradient(180deg, #7ec9ff 0%, #dff2ff 100%);
+         border: 6px solid #223042; position: relative; overflow: hidden; }
+  .win::before { content: ""; position: absolute; inset: 0;
+         background: linear-gradient(90deg, transparent 47%, #223042 47%, #223042 53%, transparent 53%),
+                     linear-gradient(0deg,  transparent 47%, #223042 47%, #223042 53%, transparent 53%); }
+  .win i { position: absolute; bottom: 0; background: #54677d; display: block; }
+  /* the employee, pure boxes */
+  .emp { position: relative; width: 96px; height: 190px; }
+  .emp div { position: absolute; }
+  .e-hair { top: 0;    left: 26px; width: 44px; height: 16px; background: #4e342e; border-radius: 6px 6px 0 0; }
+  .e-head { top: 12px; left: 28px; width: 40px; height: 36px; background: #ffd9b3; border-radius: 4px; }
+  .e-eyeL { top: 26px; left: 37px; width: 5px;  height: 5px;  background: #263238; }
+  .e-eyeR { top: 26px; left: 54px; width: 5px;  height: 5px;  background: #263238; }
+  .e-torso{ top: 48px; left: 20px; width: 56px; height: 66px; background: #ffffff; border-radius: 4px; }
+  .e-tie  { top: 50px; left: 44px; width: 9px;  height: 34px; background: #e53935; }
+  .e-armL { top: 50px; left: 8px;  width: 13px; height: 56px; background: #e8e8e8; border-radius: 4px; }
+  .e-armR { top: 50px; left: 75px; width: 13px; height: 56px; background: #e8e8e8; border-radius: 4px; }
+  .e-pant { top: 114px; left: 24px; width: 48px; height: 30px; background: #37474f; }
+  .e-legL { top: 144px; left: 26px; width: 15px; height: 34px; background: #2b3640; }
+  .e-legR { top: 144px; left: 55px; width: 15px; height: 34px; background: #2b3640; }
+  .e-shoeL{ top: 176px; left: 22px; width: 21px; height: 12px; background: #1a222b; border-radius: 3px; }
+  .e-shoeR{ top: 176px; left: 53px; width: 21px; height: 12px; background: #1a222b; border-radius: 3px; }
+</style>
+</head>
+<body class="m-0 overflow-hidden">
+<div class="relative w-[1200px] h-[630px] bg-[#0b0f18] overflow-hidden">
+
+  <!-- faint office windows -->
+  <div class="absolute inset-0 opacity-[0.10]">
+    <div class="flex gap-10 pl-16 -mt-6">
+      <div class="win"><i style="left:8px;width:22px;height:34px"></i><i style="left:38px;width:14px;height:48px"></i><i style="left:60px;width:26px;height:28px"></i><i style="left:94px;width:16px;height:42px"></i></div>
+      <div class="win"><i style="left:8px;width:16px;height:44px"></i><i style="left:34px;width:24px;height:30px"></i><i style="left:66px;width:14px;height:50px"></i><i style="left:92px;width:22px;height:36px"></i></div>
+      <div class="win"><i style="left:8px;width:24px;height:30px"></i><i style="left:40px;width:14px;height:46px"></i><i style="left:62px;width:22px;height:34px"></i><i style="left:92px;width:16px;height:40px"></i></div>
+      <div class="win"><i style="left:8px;width:14px;height:48px"></i><i style="left:32px;width:22px;height:32px"></i><i style="left:62px;width:16px;height:42px"></i><i style="left:88px;width:26px;height:28px"></i></div>
+      <div class="win"><i style="left:8px;width:22px;height:34px"></i><i style="left:38px;width:14px;height:48px"></i><i style="left:60px;width:26px;height:28px"></i><i style="left:94px;width:16px;height:42px"></i></div>
+      <div class="win"><i style="left:8px;width:16px;height:44px"></i><i style="left:34px;width:24px;height:30px"></i><i style="left:66px;width:14px;height:50px"></i><i style="left:92px;width:22px;height:36px"></i></div>
+    </div>
+    <div class="flex gap-10 pl-40 mt-10">
+      <div class="win"><i style="left:8px;width:24px;height:30px"></i><i style="left:40px;width:14px;height:46px"></i><i style="left:62px;width:22px;height:34px"></i><i style="left:92px;width:16px;height:40px"></i></div>
+      <div class="win"><i style="left:8px;width:14px;height:48px"></i><i style="left:32px;width:22px;height:32px"></i><i style="left:62px;width:16px;height:42px"></i><i style="left:88px;width:26px;height:28px"></i></div>
+      <div class="win"><i style="left:8px;width:22px;height:34px"></i><i style="left:38px;width:14px;height:48px"></i><i style="left:60px;width:26px;height:28px"></i><i style="left:94px;width:16px;height:42px"></i></div>
+      <div class="win"><i style="left:8px;width:16px;height:44px"></i><i style="left:34px;width:24px;height:30px"></i><i style="left:66px;width:14px;height:50px"></i><i style="left:92px;width:22px;height:36px"></i></div>
+    </div>
+  </div>
+
+  <!-- vignette -->
+  <div class="absolute inset-0" style="background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(4,7,12,0.85) 100%);"></div>
+
+  <!-- headline block -->
+  <div class="absolute top-[92px] w-full text-center">
+    <div class="px text-[15px] text-[#ff8a80] tracking-[6px]">MONDAY · 8:59 AM</div>
+    <div class="px text-[58px] mt-8 tracking-[4px]"
+         style="text-shadow: 5px 5px 0 rgba(0,0,0,0.55);">
+      <span class="text-white">THE</span> <span class="text-[#ffd54f]">DAILY</span> <span class="text-white">GRIND</span>
+    </div>
+    <div class="px text-[15px] text-[#cfe3ff] mt-9 tracking-[3px]">YOU'VE HAD ENOUGH. QUIT GLORIOUSLY.</div>
+  </div>
+
+  <!-- CTA pill -->
+  <div class="absolute top-[400px] w-full flex justify-center">
+    <div class="px text-[17px] text-[#69f0ae] tracking-[2px] px-10 py-5 rounded-full"
+         style="background: rgba(105,240,174,0.12); border: 3px solid rgba(105,240,174,0.65);">
+      ▶ PLAY IN YOUR BROWSER
+    </div>
+  </div>
+
+  <!-- floor -->
+  <div class="absolute bottom-0 w-full h-[64px] bg-[#141b28]" style="border-top: 4px solid #2a3648;"></div>
+
+  <!-- employee -->
+  <div class="emp absolute left-[150px] bottom-[62px]">
+    <div class="e-hair"></div><div class="e-head"></div><div class="e-eyeL"></div><div class="e-eyeR"></div>
+    <div class="e-torso"></div><div class="e-tie"></div>
+    <div class="e-armL"></div><div class="e-armR"></div>
+    <div class="e-pant"></div><div class="e-legL"></div><div class="e-legR"></div>
+    <div class="e-shoeL"></div><div class="e-shoeR"></div>
+  </div>
+
+  <!-- url -->
+  <div class="px absolute bottom-[22px] right-[40px] text-[14px] text-[#5d6b82] tracking-[2px]">daily-grind-s5j.pages.dev</div>
+</div>
+</body>
+</html>
