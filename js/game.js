@@ -3320,7 +3320,7 @@ cv.addEventListener('pointerleave', () => { pauseHoverXY = null; });
 function drawPauseOverlay(g) {
   g.fillStyle = 'rgba(8,12,20,0.72)';
   g.fillRect(0, 0, VIEW_W, VIEW_H);
-  const cw = 560, ch = 540, cx = VIEW_W / 2 - cw / 2, cy = VIEW_H / 2 - ch / 2;
+  const cw = 680, ch = 540, cx = VIEW_W / 2 - cw / 2, cy = VIEW_H / 2 - ch / 2;
   g.fillStyle = 'rgba(18,20,26,0.96)';
   g.beginPath(); g.roundRect(cx, cy, cw, ch, 10); g.fill();
   g.strokeStyle = '#37474f'; g.lineWidth = 2;
@@ -3342,7 +3342,7 @@ function drawPauseOverlay(g) {
   text(g, 'the grind will wait', cx + cw / 2, cy + 182, 9, 'rgba(255,255,255,0.55)');
 
   /* items: rows define focus order; toggles share the preference row */
-  const bw = 340, bh = 62, th = 52, gap = 14, bx = cx + cw / 2 - bw / 2;
+  const bw = 480, bh = 62, th = 52, gap = 14, bx = cx + cw / 2 - bw / 2;
   const bhOf = row => (row[0].id === 'sound' || row[0].id === 'fullscreen') ? th : bh;
   const rows = [
     [{ id: 'resume', label: 'RESUME' }],
