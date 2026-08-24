@@ -14,7 +14,8 @@ const TAU = Math.PI * 2;
 const hashN = n => { const s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s); };
 
 /* ---------------- constants ---------------- */
-const VIEW_W = 1280, VIEW_H = 720;
+const VIEW_H = 720;
+let VIEW_W = 1280;
 const T = TILE;
 const GRAV = 2600, MAXFALL = 1350;
 const MOVE = 352, ACCEL = 2900, AIR_ACCEL = 1950, FRICTION = 2600;
@@ -73,19 +74,17 @@ const PAL = {
   exitG: '#43d17c',
 };
 
-/* ---------------- canvas ---------------- */
+/* ---------------- canvas ----------------
+   The logical viewport is 720px tall (levels are exactly 15 tiles).
+   Width derives from the device aspect ratio so the canvas fills the
+   screen edge-to-edge — no page-gap letterbox bars on landscape phones.
+   VIEW_W is clamped to a sane range and never exceeds the current
+   level's pixel width (keeps tight arenas like the boss floor framed). */
 const cv = document.getElementById('game');
 const ctx = cv.getContext('2d');
-cv.width = VIEW_W; cv.height = VIEW_H;
-function fit() {
-  const s = Math.min(window.innerWidth / VIEW_W, window.innerHeight / VIEW_H);
-  cv.style.width = (VIEW_W * s | 0) + 'px';
-  cv.style.height = (VIEW_H * s | 0) + 'px';
-}
-window.addEventListener('resize', fit); fit();
-
+let currentLvlPxW = 0;           /* set on level load so the viewport can clamp */
 let vignette = null;
-{
+function makeVignette() {
   vignette = document.createElement('canvas');
   vignette.width = VIEW_W; vignette.height = VIEW_H;
   const vg = vignette.getContext('2d');
@@ -94,6 +93,38 @@ let vignette = null;
   rg.addColorStop(1, 'rgba(10,14,22,0.42)');
   vg.fillStyle = rg; vg.fillRect(0, 0, VIEW_W, VIEW_H);
 }
+function applyViewport() {
+  VIEW_W = Math.max(1280, Math.min(1920, Math.round(VIEW_H * window.innerWidth / window.innerHeight)));
+  cv.width = VIEW_W; cv.height = VIEW_H;
+  makeVignette();
+  fit();
+}
+function fit() {
+  const s = Math.min(window.innerWidth / VIEW_W, window.innerHeight / VIEW_H);
+  cv.style.width = (VIEW_W * s | 0) + 'px';
+  cv.style.height = (VIEW_H * s | 0) + 'px';
+}
+/* camera travel limits. When the viewport is WIDER than the level
+   (boss arena is 1440px vs a 1558px phone), center the room instead of
+   pinning the camera at 0 and leaving a dead band on one side. */
+function camBounds() {
+  if (!lvl) return [0, 0];
+  const max = lvl.pxW - VIEW_W;
+  if (max <= 0) {
+    const h = (VIEW_W - lvl.pxW) / 2;
+    return [-h, h];
+  }
+  return [0, max];
+}
+function clampCam() {
+  const b = camBounds();
+  camX = clamp(camX, b[0], b[1]);
+}
+window.addEventListener('resize', () => {
+  applyViewport();
+  clampCam();
+});
+applyViewport();
 
 /* ---------------- input ---------------- */
 const Input = { l: false, r: false, d: false, jump: false, buf: 0, dashReq: false, fireReq: false };
@@ -177,6 +208,17 @@ function syncUIButtons() {
   if (uiBtns.share) uiBtns.share.classList.toggle('show', state === 'win' || state === 'gameover');
   const tfire = document.getElementById('tfire');
   if (tfire) tfire.style.opacity = (player && player.hasStapler) ? '' : '0.35';   /* dimmed until grabbed */
+  /* fullscreen toggle: visible on menus/screens, hidden during play/intro so it
+     never covers the HUD (hearts/combo/score live in the top corners) */
+  const fs = document.getElementById('fsbtn');
+  if (fs) fs.classList.toggle('show', state !== 'play' && state !== 'intro');
+  /* staff-select already has its own mid-screen ‹ › arrows — hide the bottom
+     movement arrows there so the two never double up on mobile */
+  const hideMove = state === 'select';
+  for (const id of ['tleft', 'tright']) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = hideMove ? 'none' : '';
+  }
 }
 
 /* touch controls */
@@ -200,19 +242,34 @@ if (window.matchMedia && matchMedia('(pointer: coarse)').matches) {
 }
 
 /* ---------------- fullscreen ---------------- */
+function inFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement ||
+            document.mozFullScreenElement || document.msFullscreenElement);
+}
 function toggleFullscreen() {
+  const d = document;
+  if (inFullscreen()) {
+    const exit = d.exitFullscreen || d.webkitExitFullscreen || d.mozCancelFullScreen || d.msExitFullscreen;
+    if (exit) exit.call(d);
+    return;
+  }
   try {
-    const el = document.documentElement;
-    const req = el.requestFullscreen || el.webkitRequestFullscreen;
-    const exit = document.exitFullscreen || document.webkitExitFullscreen;
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) { if (req) req.call(el); }
-    else if (exit) exit.call(document);
+    const el = d.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+    if (req) {
+      const r = req.call(el);
+      /* mobile browsers (iOS Safari) reject fullscreen — swallow it, never throws */
+      if (r && r.catch) r.catch(() => {});
+      else applyViewport();
+    }
   } catch (e) {}
 }
-document.addEventListener('fullscreenchange', syncFsBtn);
-document.addEventListener('webkitfullscreenchange', syncFsBtn);
+document.addEventListener('fullscreenchange', () => { syncFsBtn(); applyViewport(); });
+document.addEventListener('webkitfullscreenchange', () => { syncFsBtn(); applyViewport(); });
+document.addEventListener('mozfullscreenchange', () => { syncFsBtn(); applyViewport(); });
+document.addEventListener('msfullscreenchange', () => { syncFsBtn(); applyViewport(); });
 function syncFsBtn() {
-  const on = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const on = inFullscreen();
   const btn = document.getElementById('fsbtn');
   if (btn) { btn.innerHTML = on ? '\u2922' : '\u26F6'; btn.title = on ? 'Exit fullscreen (F11)' : 'Fullscreen (F11)'; }
 }
@@ -586,8 +643,12 @@ function loadLevel(i, opts = {}) {
   player = makePlayer(lvl.spawn.x, lvl.spawn.y);
   boss = lvl.bossDef ? makeBoss(lvl.bossDef.x, lvl.bossDef.y) : null;
   parts.length = 0; pops.length = 0; ghosts.length = 0;
-  camX = clamp(player.cx - VIEW_W / 2, 0, Math.max(0, lvl.pxW - VIEW_W));
+  currentLvlPxW = lvl.pxW;
+  camX = player.cx - VIEW_W / 2;
+  clampCam();
   bakeLevel();
+  applyViewport();          /* refresh vignette to the new viewport */
+  clampCam();
   fadeT = 0.45;
 
   if (!opts.ambient) {
@@ -845,7 +906,8 @@ function respawn() {
   p.climbing = false; p.climbLock = 0;
   p.prevY = p.y;
   /* snap camera so the player is always on screen after respawn */
-  camX = clamp(p.cx - VIEW_W / 2, 0, Math.max(0, lvl.pxW - VIEW_W));
+  camX = p.cx - VIEW_W / 2;
+  clampCam();
 }
 function gameOver(cause) {
   pickDeathMsg = deathMsg(cause) || 'You have been let go.';
@@ -3096,7 +3158,8 @@ function update(dt) {
   }
 
   const look = player.face * 110 + player.vx * 0.14;
-  const target = clamp(player.cx + look - VIEW_W / 2, 0, Math.max(0, lvl.pxW - VIEW_W));
+  const cb = camBounds();
+  const target = clamp(player.cx + look - VIEW_W / 2, cb[0], cb[1]);
   camX = lerp(camX, target, 1 - Math.exp(-7 * dt));
 
   /* NaN safety net (defense-in-depth after the missing-getter incident) */
@@ -3107,7 +3170,8 @@ function update(dt) {
   if (!isFinite(player.sqY)) player.sqY = 1;
   if (!isFinite(player.ph)) player.ph = 0;
   if (!isFinite(camX)) {
-    camX = clamp(player.cx - VIEW_W / 2, 0, Math.max(0, lvl.pxW - VIEW_W));
+    camX = player.cx - VIEW_W / 2;
+    clampCam();
   }
 
   const sh = camShake * camShake * 13;
@@ -3274,6 +3338,12 @@ function frame(ts) {
 resetTotals();
 loadLevel(0, { ambient: true });
 state = 'title';
+/* dev/QA: ?screen=select parks on a screen for screenshots (harmless in prod) */
+const __park = (location.search.match(/[?&]screen=(title|select|play)/) || [])[1];
+if (__park) {
+  if (__park === 'select') state = 'select';
+  else if (__park === 'play') startGame();
+}
 requestAnimationFrame(frame);
 
 /* test hooks (harmless in production) */

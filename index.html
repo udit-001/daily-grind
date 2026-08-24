@@ -86,9 +86,10 @@
   }
   /* rotate-to-landscape hint for portrait phones */
   #fsbtn {
-    position: fixed; right: calc(10px + env(safe-area-inset-right)); bottom: calc(10px + env(safe-area-inset-bottom));
+    position: fixed; right: calc(10px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top));
     z-index: 12; width: 44px; height: 44px;
-    display: flex; align-items: center; justify-content: center;
+    display: none;   /* syncUIButtons() reveals it on menus/screens */
+    align-items: center; justify-content: center;
     border-radius: 50%; font-size: 20px;
     background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.22);
     color: rgba(255,255,255,0.75);
@@ -96,7 +97,7 @@
     font-family: inherit;
   }
   #fsbtn:hover { background: rgba(255,255,255,0.18); }
-  @media (pointer: coarse) { #fsbtn { display: none; } }  /* phones have their own buttons */
+  #fsbtn.show { display: flex; }
   #rotate {
     display: none; position: fixed; inset: 0; z-index: 20;
     background: rgba(11,15,24,0.88); color: #cfe3ff;
@@ -130,6 +131,6 @@
 <div id="fsbtn" title="Fullscreen (F11)">&#x26F6;</div>
 <script src="js/audio.js?v=5"></script>
 <script src="js/levels.js?v=6"></script>
-<script src="js/game.js?v=31"></script>
+<script src="js/game.js?v=33"></script>
 </body>
 </html>
