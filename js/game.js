@@ -1949,33 +1949,30 @@ function rankFor(deaths) {
 /* ---------------- share cards (the viral loop) ---------------- */
 let shareToast = null;
 function multLabel() { return Math.min(comboN, 5); }
-function buildShareWin() {
+/* share text is a skimmer's card (pitch budgets): line 1 = the flex,
+   line 2 = the beat-me link, line 3 = the receipts. No LinkedIn filler. */
+function buildShareWin(url) {
   const rk = rankFor(totals.deaths)[0];
   const mm = String(Math.floor(totals.time / 60)).padStart(2, '0');
   const ss = String(Math.floor(totals.time % 60)).padStart(2, '0');
-  return 'I was let go from THE DAILY GRIND today.\n' +
-    'Grateful for the journey. Some reflections:\n\n' +
-    '\u{1F4BC} Shareholder value created: ' + totals.score + '\n' +
-    '\u23F1 Time served: ' + mm + ':' + ss + '\n' +
-    '\u2615 Coffees: ' + totals.coffees + ' \u00B7 \u{1F3AB} Tickets shipped: ' + totals.files + ' \u00B7 \u{1F4A5} Managers synergized: ' + totals.stomps + '\n' +
-    '\u{1F480} Rage quits: ' + totals.deaths + ' \u00B7 \u26A1 Best combo: x' + Math.max(1, totals.maxCombo || 0) + '\n' +
-    '\u{1F3C6} Final rank: ' + rk + '\n\n' +
-    'Hiring? Just asking.\n\u2014 ' + empName() + ' ' + empDept();
+  return 'RESIGNED. Score ' + totals.score + ' \u00B7 rank: ' + rk + '\n' +
+    'Beat me: ' + (url || challengeURL()) + '\n' +
+    '\u2615' + totals.coffees + ' \u00B7 \u{1F3AB}' + totals.files + ' \u00B7 \u{1F4A5}' + totals.stomps + ' managers \u00B7 \u{1F480}' + totals.deaths + ' rage quits \u00B7 \u26A1x' + Math.max(1, totals.maxCombo || 0) + '\n' +
+    mm + ':' + ss + ' on the clock \u2014 ' + empName() + ', ' + empDept();
 }
-function buildShareDead() {
-  let s = 'Performance review complete. Results below.\n\n' +
-    '\u{1F480} Cause: ' + pickDeathMsg + '\n' +
-    '\u{1F4BC} Shareholder value generated: ' + totals.score + '\n' +
-    '\u{1F4C9} Verdict: will reapply immediately.\n';
-  if (challenge && challenge.beaten) s += '\n\u26A0 CHALLENGE CRUSHED: ' + challenge.name + '\'s ' + challenge.score + ' did not survive contact.\n';
-  s += '\nThe game is called THE DAILY GRIND.\n\u2014 ' + empName() + ' ' + empDept();
+function buildShareDead(url) {
+  let s = 'TERMINATED. Score ' + totals.score + '. Cause: ' + pickDeathMsg + '\n' +
+    'Beat me anyway: ' + (url || challengeURL()) + '\n' +
+    '\u2615' + totals.coffees + ' \u00B7 \u{1F3AB}' + totals.files + ' \u00B7 \u{1F4A5}' + totals.stomps + ' managers';
+  if (challenge && challenge.beaten) s += ' \u00B7 \u26A0 ' + challenge.name + "'s " + challenge.score + ' did not survive';
+  s += '\n\u2014 ' + empName() + ', ' + empDept();
   return s;
 }
 async function doShare() {
   const kind = state === 'win' ? 'win' : 'dead';
-  const body = kind === 'win' ? buildShareWin() : buildShareDead();
   const url = challengeURL();
-  const payload = { text: body + '\n' + url, url };
+  const body = kind === 'win' ? buildShareWin(url) : buildShareDead(url);
+  const payload = { text: body };
   const native = () => navigator.share
     ? navigator.share(payload).then(() => { shareToast = { text: 'SHARED!', t: 2 }; return true; }).catch(() => false)
     : Promise.resolve(false);
