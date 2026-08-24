@@ -374,7 +374,7 @@ const SCRIPT_POOL = {
       { who: 'you', text: 'I don\u2019t have an account. Or a desk. HR gave me a beanbag and a password I\u2019m not allowed to reset.' },
       { who: 'manager', text: 'The beanbag is a chair. Overtime. Tonight.' },
       { who: 'you', text: 'Actually... I quit. And I\u2019m taking the beanbag. It knows my shape.' },
-      { who: 'manager', text: 'Ha! Good one. You can\u2019t resign from a job you were never officially given. Standup\u2019s at nine.' },
+      { who: 'manager', text: 'Ha! Good one. You can\u2019t resign from a job you were never officially given. Standup\u2019s at nine.' },' },
       { who: 'you', text: '(Not this time. First day. Last day. Perfect attendance.)' },
     ]],
     boss: [[
@@ -396,7 +396,7 @@ const SCRIPT_POOL = {
       { who: 'you', text: 'Filed as BUG-1043: \u201C{client} account missing.\u201D Severity: blocker. Assignee: anyone but me.' },
       { who: 'manager', text: 'Not anymore. I reassigned it. To you. Effective immediately. Overtime. Tonight.' },
       { who: 'you', text: 'Actually... I quit. Repro steps: show up Monday. Fails every Monday. 100% rate.' },
-      { who: 'manager', text: 'Ha! Good one. Marked duplicate \u2014 everyone threatens that after the client call. Standup\u2019s at nine.' },
+      { who: 'manager', text: 'Ha! Good one. Marked duplicate \u2014 everyone threatens that after the client call. Standup\u2019s at nine.' },' },
       { who: 'you', text: '(Not this time. Root cause found. It\u2019s this building.)' },
     ]],
     boss: [[
@@ -418,7 +418,7 @@ const SCRIPT_POOL = {
       { who: 'you', text: 'Closed it! Then upsold the client to our biggest competitor. Huge win. For them. Bittersweet!' },
       { who: 'manager', text: 'You handed our biggest account to our biggest competitor. Win it back. Overtime. Tonight.' },
       { who: 'you', text: 'Actually... I quit! Big picture: you lose a top performer, gain a LinkedIn connection. Win-win!' },
-      { who: 'manager', text: 'Ha! Good one. Your quota doesn\u2019t quit, champ. Neither do you. Standup\u2019s at nine.' },
+      { who: 'manager', text: 'Ha! Good one. Your quota doesn\u2019t quit, champ. Neither do you. Standup\u2019s at nine.' },' },
       { who: 'you', text: '(Not this time. This walkout is going straight to the highlight reel.)' },
     ]],
     boss: [[
@@ -440,7 +440,7 @@ const SCRIPT_POOL = {
       { who: 'you', text: 'Let me file that under \u201Cthings we both know won\u2019t happen.\u201D Done! Still smiling!' },
       { who: 'manager', text: 'Then unfile it. The account exists. Find it. Overtime. Tonight.' },
       { who: 'you', text: 'Actually... I quit! Still smiling. That\u2019s the scary part. Ask HR. Oh wait, I AM HR.' },
-      { who: 'manager', text: 'Ha! Good one. Resignations need HR sign-off, and you ARE HR. Sign it yourself. Standup\u2019s at nine.' },
+      { who: 'manager', text: 'Ha! Good one. Resignations need HR sign-off, and you ARE HR. Sign it yourself. Standup\u2019s at nine.' },' },
       { who: 'you', text: '(Not this time. I scheduled this resignation weeks ago. It\u2019s recurring.)' },
     ]],
     boss: [[
