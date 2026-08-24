@@ -126,6 +126,17 @@ window.addEventListener('resize', () => {
 });
 applyViewport();
 
+/* portrait gate: while the rotate overlay covers the screen, freeze play —
+   the user comes back to a pause menu and resumes deliberately */
+if (window.matchMedia) {
+  const portraitGate = matchMedia('(pointer: coarse) and (orientation: portrait)');
+  const onPortraitGate = q => {
+    if (q.matches && state === 'play' && !paused && !dialogue && charIntro <= 0) paused = true;
+  };
+  if (portraitGate.addEventListener) portraitGate.addEventListener('change', onPortraitGate);
+  else if (portraitGate.addListener) portraitGate.addListener(onPortraitGate);   /* older Safari */
+}
+
 /* ---------------- input ---------------- */
 const Input = { l: false, r: false, d: false, jump: false, buf: 0, dashReq: false, fireReq: false };
 const KEYMAP = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r', ArrowDown: 'd', s: 'd', S: 'd' };
@@ -147,7 +158,13 @@ function setKey(k, down) {
 window.addEventListener('keydown', e => {
   if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(e.key)) e.preventDefault();
   if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); return; }
-  if (charIntro > 0) { endPunchIn(); return; }
+  if (charIntro > 0) {
+    /* punch-in splash: any key clocks in — ESC walks back to the select screen
+       (B-button-back on confirm screens) so a wrong SIGN is undoable */
+    if (e.key === 'Escape') backToSelectFromPunchIn();
+    else endPunchIn();
+    return;
+  }
   if (dialogue) {
     if (e.key === 'Escape') { const cb = dialogue.onDone; dialogue = null; dlgSkipRect = null; if (cb) cb(); }
     else advanceDialogue();
@@ -289,10 +306,17 @@ function toggleFullscreen() {
     }
   } catch (e) {}
 }
-document.addEventListener('fullscreenchange', () => { syncFsBtn(); applyViewport(); });
-document.addEventListener('webkitfullscreenchange', () => { syncFsBtn(); applyViewport(); });
-document.addEventListener('mozfullscreenchange', () => { syncFsBtn(); applyViewport(); });
-document.addEventListener('msfullscreenchange', () => { syncFsBtn(); applyViewport(); });
+document.addEventListener('fullscreenchange', onFsChange);
+document.addEventListener('webkitfullscreenchange', onFsChange);
+document.addEventListener('mozfullscreenchange', onFsChange);
+document.addEventListener('msfullscreenchange', onFsChange);
+/* ESC in fullscreen is browser-owned: the page never sees that keydown, the
+   browser just exits. Riding fullscreenchange keeps ESC = pause in BOTH modes
+   (established PC-game behavior: losing fullscreen/focus mid-run pauses). */
+function onFsChange() {
+  syncFsBtn(); applyViewport();
+  if (!inFullscreen() && (state === 'play' || state === 'intro') && !paused && !dialogue && !charIntro) paused = true;
+}
 function syncFsBtn() {
   const on = inFullscreen();
   const btn = document.getElementById('fsbtn');
@@ -350,7 +374,7 @@ const SCRIPT_POOL = {
       { who: 'you', text: 'I don\u2019t have an account. Or a desk. HR gave me a beanbag and a password I\u2019m not allowed to reset.' },
       { who: 'manager', text: 'The beanbag is a chair. Overtime. Tonight.' },
       { who: 'you', text: 'Actually... I quit. And I\u2019m taking the beanbag. It knows my shape.' },
-      { who: 'manager', text: 'Ha! Good one. See you at standup.' },
+      { who: 'manager', text: 'Ha! Good one. You can\u2019t resign from a job you were never officially given. Standup\u2019s at nine.' },
       { who: 'you', text: '(Not this time. First day. Last day. Perfect attendance.)' },
     ]],
     boss: [[
@@ -372,7 +396,7 @@ const SCRIPT_POOL = {
       { who: 'you', text: 'Filed as BUG-1043: \u201C{client} account missing.\u201D Severity: blocker. Assignee: anyone but me.' },
       { who: 'manager', text: 'Not anymore. I reassigned it. To you. Effective immediately. Overtime. Tonight.' },
       { who: 'you', text: 'Actually... I quit. Repro steps: show up Monday. Fails every Monday. 100% rate.' },
-      { who: 'manager', text: 'Ha! Good one. See you at standup.' },
+      { who: 'manager', text: 'Ha! Good one. Marked duplicate \u2014 everyone threatens that after the client call. Standup\u2019s at nine.' },
       { who: 'you', text: '(Not this time. Root cause found. It\u2019s this building.)' },
     ]],
     boss: [[
@@ -394,7 +418,7 @@ const SCRIPT_POOL = {
       { who: 'you', text: 'Closed it! Then upsold the client to our biggest competitor. Huge win. For them. Bittersweet!' },
       { who: 'manager', text: 'You handed our biggest account to our biggest competitor. Win it back. Overtime. Tonight.' },
       { who: 'you', text: 'Actually... I quit! Big picture: you lose a top performer, gain a LinkedIn connection. Win-win!' },
-      { who: 'manager', text: 'Ha! Good one. See you at standup.' },
+      { who: 'manager', text: 'Ha! Good one. Your quota doesn\u2019t quit, champ. Neither do you. Standup\u2019s at nine.' },
       { who: 'you', text: '(Not this time. This walkout is going straight to the highlight reel.)' },
     ]],
     boss: [[
@@ -416,7 +440,7 @@ const SCRIPT_POOL = {
       { who: 'you', text: 'Let me file that under \u201Cthings we both know won\u2019t happen.\u201D Done! Still smiling!' },
       { who: 'manager', text: 'Then unfile it. The account exists. Find it. Overtime. Tonight.' },
       { who: 'you', text: 'Actually... I quit! Still smiling. That\u2019s the scary part. Ask HR. Oh wait, I AM HR.' },
-      { who: 'manager', text: 'Ha! Good one. See you at standup.' },
+      { who: 'manager', text: 'Ha! Good one. Resignations need HR sign-off, and you ARE HR. Sign it yourself. Standup\u2019s at nine.' },
       { who: 'you', text: '(Not this time. I scheduled this resignation weeks ago. It\u2019s recurring.)' },
     ]],
     boss: [[
@@ -454,6 +478,13 @@ function endPunchIn() {
     banner = dayBannerStash; dayBannerStash = null;
     introT = Math.min(introT, 0.9);
   });
+}
+/* ESC on the punch-in card: undo the signing, back to the staff select */
+function backToSelectFromPunchIn() {
+  charIntro = 0;
+  banner = dayBannerStash; dayBannerStash = null;
+  state = 'select';
+  SFX.click();
 }
 function playDialogue(lines, onDone) {
   dialogue = {
@@ -2043,16 +2074,25 @@ function onConfirm() {
   else if (state === 'gameover') retryLevel(false);
   else if (state === 'win') { state = 'title'; loadLevel(0, { ambient: true }); Sound.playSong('main'); }
 }
-/* tap a card on the staff-select screen to select; tap again to lock in */
+/* SIGN button hit region on the selected card — shared by draw + tap.
+   Only this button (or Enter) locks in: the established select->confirm
+   pattern, so auditioning cards never accidentally signs one. */
+function signRect() {
+  const CW = 262, GAP = 22, X0 = (VIEW_W - (CW * 4 + GAP * 3)) / 2, Y0 = 168, CH = 380;
+  const x = X0 + avatarIdx * (CW + GAP), y = Y0 - 6;   /* selected card lift */
+  return { x: x + CW / 2 - 74, y: y + CH - 56, w: 148, h: 42 };
+}
 function handleSelectTap(e) {
   const rect = cv.getBoundingClientRect();
   const vx = (e.clientX - rect.left) / rect.width * VIEW_W;
   const vy = (e.clientY - rect.top) / rect.height * VIEW_H;
   const CW = 262, GAP = 22, X0 = (VIEW_W - (CW * 4 + GAP * 3)) / 2, Y0 = 168, CH = 380;
   const i = Math.floor((vx - X0) / (CW + GAP));
-  if (vx < X0 || i < 0 || i > 3 || vy < Y0 || vy > Y0 + CH) return;
-  if (i === avatarIdx) onConfirm();          /* second tap locks in */
-  else { setAvatar(i); SFX.click(); }
+  if (vx < X0 || i < 0 || i > 3 || vy < Y0 - 6 || vy > Y0 + CH) return;
+  if (i === avatarIdx) {
+    const r = signRect();
+    if (vx >= r.x && vx <= r.x + r.w && vy >= r.y && vy <= r.y + r.h) onConfirm();
+  } else { setAvatar(i); SFX.click(); }
 }
 function togglePause() {
   if (state === 'play' || state === 'intro') {
@@ -3152,35 +3192,56 @@ function drawStaffSelect(g) {
     g.strokeStyle = sel ? A.tint : 'rgba(255,255,255,0.16)';
     g.lineWidth = sel ? 4 : 2;
     g.beginPath(); g.roundRect(x, y, CW, CH, 14); g.stroke();
-    /* single focal cue: chevron above the selected card */
+    /* single focal cue: chevron above the selected card (fighting-game select arrow) */
     if (sel && Math.sin(perf * 5) > -0.2) {
       g.fillStyle = '#69f0ae';
       g.beginPath();
       g.moveTo(x + CW / 2 - 12, y - 24); g.lineTo(x + CW / 2 + 12, y - 24); g.lineTo(x + CW / 2, y - 8);
       g.closePath(); g.fill();
     }
-    /* portrait */
+    /* one performer: the selected card auditions (personality idle anim),
+       the rest stand still — breath bob + occasional blink */
+    const blink = ((perf + i * 1.3) % 3.9) < 0.13;
     g.save();
     g.translate(x + CW / 2, y + 148);
-    g.scale(1.9, 1.9);
-    drawEmployee(g, 0, 0, 1, perf * 9 + i * 1.7, Object.assign({ moving: true }, A.opts));
+    if (sel) {
+      if (A.id === 'intern') g.translate(0, -Math.abs(Math.sin(perf * 6)) * 14);          /* day-one hops */
+      else if (A.id === 'priya') { g.translate(Math.sin(perf * 9) * 9, -Math.abs(Math.sin(perf * 9)) * 4); } /* QA stamp-shuffle */
+      else if (A.id === 'chad') g.translate(0, -Math.abs(Math.sin(perf * 4.2)) * 26);     /* 10x-energy jumps */
+      else if (A.id === 'meera') { g.rotate(Math.sin(perf * 2) * 0.07); g.translate(0, Math.sin(perf * 2) * 3); } /* calm HR sway */
+      g.scale(1.9, 1.9);
+      drawEmployee(g, 0, 0, 1, perf * 9 + i * 1.7, Object.assign({ moving: true }, A.opts));
+    } else {
+      g.scale(1.9, 1.9);
+      drawEmployee(g, 0, 0, 1, 0, Object.assign({ moving: false, blink }, A.opts));
+    }
     g.restore();
     g.fillStyle = 'rgba(255,255,255,0.10)';
     g.beginPath(); g.ellipse(x + CW / 2, y + 152, 44, 9, 0, 0, TAU); g.fill();
+    /* progressive disclosure: idle card = name only; auditioned card = the full kit */
     const parts = A.name.split(' · ');
-    text(g, parts[0], x + CW / 2, y + 198, 13, A.tint);
-    if (parts[1]) text(g, parts[1], x + CW / 2, y + 222, 8, 'rgba(207,227,255,0.6)');
-    /* kit rows: colored glyph carries the meaning — legend lives at screen bottom, once */
-    text(g, '\u25B2', x + 30, y + 258, 9, '#69f0ae');
-    text(g, A.card.perk, x + 48, y + 258, 8, 'rgba(255,255,255,0.92)', 'left');
-    text(g, '\u25B2', x + 30, y + 282, 9, '#82b1ff');
-    text(g, A.card.world, x + 48, y + 282, 8, 'rgba(255,255,255,0.92)', 'left');
-    text(g, '\u25B2', x + 30, y + 306, 9, '#ff8a80');
-    text(g, A.card.ouch, x + 48, y + 306, 8, 'rgba(255,255,255,0.92)', 'left');
+    text(g, parts[0], x + CW / 2, y + 198, 13, sel ? A.tint : 'rgba(207,227,255,0.55)');
+    if (sel) {
+      if (parts[1]) text(g, parts[1], x + CW / 2, y + 222, 8, 'rgba(207,227,255,0.6)');
+      /* kit rows: colored glyph carries the meaning — no legend needed */
+      text(g, '\u25B2', x + 30, y + 258, 9, '#69f0ae');
+      text(g, A.card.perk, x + 48, y + 258, 8, 'rgba(255,255,255,0.92)', 'left');
+      text(g, '\u25B2', x + 30, y + 282, 9, '#82b1ff');
+      text(g, A.card.world, x + 48, y + 282, 8, 'rgba(255,255,255,0.92)', 'left');
+      text(g, '\u25B2', x + 30, y + 306, 9, '#ff8a80');
+      text(g, A.card.ouch, x + 48, y + 306, 8, 'rgba(255,255,255,0.92)', 'left');
+      /* SIGN button: the one labeled confirm (select->confirm pattern) */
+      const pul = 1 + Math.sin(perf * 5) * 0.03;
+      g.save();
+      g.translate(x + CW / 2, y + CH - 35); g.scale(pul, pul);
+      g.fillStyle = '#69f0ae';
+      g.beginPath(); g.roundRect(-74, -21, 148, 42, 10); g.fill();
+      text(g, 'SIGN', 0, 1, 14, '#0b3d1f');
+      g.restore();
+    }
   }
-  text(g, 'GREEN PERK · BLUE WORLD · RED OUCH', VIEW_W / 2, Y0 + CH + 36, 8, 'rgba(207,227,255,0.45)');
-  if (Math.sin(perf * 4) > -0.3) text(g, 'ENTER / TAP SELECTED CARD TO SIGN', VIEW_W / 2, VIEW_H - 76, 10, '#69f0ae');
-  text(g, '< > BROWSE · ESC BACK · F11 FULLSCREEN', VIEW_W / 2, VIEW_H - 42, 10, 'rgba(207,227,255,0.7)');
+  /* single static control-hint line (arcade standard) */
+  text(g, '< > CHOOSE · ENTER SIGN · ESC BACK', VIEW_W / 2, VIEW_H - 42, 10, 'rgba(207,227,255,0.55)');
 }
 /* jetpack-joyride-style punch-in card: one beat, one name, skippable */
 const INTRO_QUOTES = [
@@ -3210,13 +3271,10 @@ function drawCharIntro(g) {
   text(g, AVATARS[avatarIdx].name.split(' \u00B7 ')[1] || AVATARS[avatarIdx].name, nx, VIEW_H * 0.445, 13, AVATARS[avatarIdx].tint);
   text(g, '\u201C' + INTRO_QUOTES[avatarIdx] + '\u201D', nx, VIEW_H * 0.53, 11, 'rgba(255,255,255,0.8)');
   text(g, AVATARS[avatarIdx].blurb, nx, VIEW_H * 0.60, 8, AVATARS[avatarIdx].tint);
-  /* progress fills once, then the card simply waits — no fake countdown */
-  const p = clamp(t / 4.2, 0, 1);
-  g.fillStyle = 'rgba(255,255,255,0.15)';
-  g.fillRect(nx - 150, VIEW_H * 0.68, 300, 6);
-  g.fillStyle = '#69f0ae';
-  g.fillRect(nx - 150, VIEW_H * 0.68, 300 * p, 6);
-  if (Math.sin(perf * 4) > -0.3) text(g, 'ANY KEY TO START', nx, VIEW_H * 0.77, 9, 'rgba(207,227,255,0.7)');
+  /* no fake progress bar — the card WAITS for the player, nothing here may
+     look like a loading meter. Prompt uses the established runner pattern. */
+  if (Math.sin(perf * 4) > -0.3) text(g, 'ANY KEY · PUNCH IN', nx, VIEW_H * 0.77, 9, 'rgba(207,227,255,0.7)');
+  text(g, 'ESC · PICK SOMEONE ELSE', nx, VIEW_H * 0.77 + 26, 7, 'rgba(207,227,255,0.35)');
   g.restore();
 }
 function drawTitle(g) {
