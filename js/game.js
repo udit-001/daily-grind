@@ -167,6 +167,7 @@ window.addEventListener('keydown', e => {
     if (player && lvl) addPop(clamp(player.cx, camX + 60, camX + VIEW_W - 60), 120, m ? 'MUTED' : 'SOUND ON', '#cfe3ff');
   }
   else if ((e.key === 'r' || e.key === 'R') && (state === 'play' || state === 'pause' || paused)) retryLevel(true);
+  else if ((e.key === 'q' || e.key === 'Q') && paused) quitToTitle();
   else if ((e.key === 's' || e.key === 'S') && (state === 'win' || state === 'gameover')) doShare();
   setKey(e.key, true);
 });
@@ -177,6 +178,11 @@ window.addEventListener('blur', () => {
 });
 cv.addEventListener('pointerdown', e => {
   Sound.resume();
+  const __r = cv.getBoundingClientRect();
+  const __vx = (e.clientX - __r.left) / __r.width * VIEW_W;
+  const __vy = (e.clientY - __r.top) / __r.height * VIEW_H;
+  if (paused) { handlePauseMenuTap(__vx, __vy); return; }   /* menu buttons only — no accidental resume */
+  if (pauseBtnHit(__vx, __vy)) { togglePause(); SFX.click(); return; }
   if (charIntro > 0) { endPunchIn(); return; }
   if (dialogue) { advanceDialogue(); return; }
   if (state === 'select') { handleSelectTap(e); return; }
@@ -1989,6 +1995,33 @@ function handleSelectTap(e) {
 function togglePause() {
   if (state === 'play' || state === 'intro') paused = !paused;
 }
+/* ── coffee break (pause): quit-to-title + canvas menu hit-testing ── */
+function quitToTitle() {
+  paused = false;
+  dialogue = null;
+  state = 'title';
+  loadLevel(0, { ambient: true });
+  Sound.playSong('main');
+}
+let pauseBtnRect = null;   /* in-run ⏸ pill hit region */
+let pauseMenuBtns = [];    /* coffee-break menu hit regions, rebuilt each draw */
+function pauseBtnHit(x, y) {
+  return pauseBtnRect && x >= pauseBtnRect.x && x <= pauseBtnRect.x + pauseBtnRect.w &&
+         y >= pauseBtnRect.y && y <= pauseBtnRect.y + pauseBtnRect.h;
+}
+function handlePauseMenuTap(x, y) {
+  for (const b of pauseMenuBtns) {
+    if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+      SFX.click();
+      if (b.id === 'resume') paused = false;
+      else if (b.id === 'restart') retryLevel(false);
+      else if (b.id === 'sound') Sound.toggleMute();
+      else if (b.id === 'quit') quitToTitle();
+      return true;
+    }
+  }
+  return false;
+}
 function startGame() {
   resetTotals();
   runHasStapler = false;
@@ -2918,7 +2951,7 @@ function drawHints(g) {
   const size = COARSE ? 9 : 10;
   g.font = `${size}px "Press Start 2P", monospace`;
   const tw = g.measureText(curHint.msg).width;
-  const bw = tw + 44, bh = 34, bx = VIEW_W / 2 - bw / 2, by = 64;
+  const bw = tw + 44, bh = 34, bx = VIEW_W / 2 - bw / 2, by = 112;
   g.save();
   g.globalAlpha = a * 0.94;
   g.fillStyle = 'rgba(13,20,32,0.88)';
@@ -2934,7 +2967,7 @@ function resetHints() {
 }
 function drawChallengeTarget(g) {
   if (!challenge || challenge.beaten || state !== 'play') return;
-  text(g, 'TARGET ' + challenge.name + ' \u00B7 ' + challenge.score, VIEW_W / 2, 108, 9,
+  text(g, 'TARGET ' + challenge.name + ' \u00B7 ' + challenge.score, VIEW_W / 2, 150, 9,
        totals.score >= challenge.score * 0.8 ? '#ffd54f' : 'rgba(255,138,128,0.85)');
 }
 
@@ -2967,18 +3000,18 @@ function drawHUD(g) {
   text(g, String(totals.score).padStart(6, '0'), VIEW_W - 28, 52, 15, '#fff', 'right');
   if (bestScore > 0) text(g, 'BEST ' + bestScore, VIEW_W - 28, 76, 9, 'rgba(255,255,255,0.5)', 'right');
 
-  /* combo meter */
+  /* combo meter (below the pause pill) */
   if (comboN >= 2 && comboT > 0) {
     const cw = 170, cxp = VIEW_W / 2 - cw / 2;
     g.fillStyle = 'rgba(0,0,0,0.45)';
-    g.beginPath(); g.roundRect(cxp, 18, cw, 34, 8); g.fill();
+    g.beginPath(); g.roundRect(cxp, 64, cw, 34, 8); g.fill();
     const pul = 1 + Math.max(0, comboPopT) * 0.5;
     g.save();
-    g.translate(VIEW_W / 2, 33); g.scale(pul, pul);
+    g.translate(VIEW_W / 2, 79); g.scale(pul, pul);
     text(g, 'COMBO x' + multLabel(), 0, 0, 13, '#ffd740');
     g.restore();
-    g.fillStyle = 'rgba(255,255,255,0.22)'; g.fillRect(cxp + 12, 44, cw - 24, 4);
-    g.fillStyle = '#ffd740'; g.fillRect(cxp + 12, 44, (cw - 24) * clamp(comboT / COMBO_T, 0, 1), 4);
+    g.fillStyle = 'rgba(255,255,255,0.22)'; g.fillRect(cxp + 12, 90, cw - 24, 4);
+    g.fillStyle = '#ffd740'; g.fillRect(cxp + 12, 90, (cw - 24) * clamp(comboT / COMBO_T, 0, 1), 4);
   }
 
   if (boss && !boss.dead && bossIntroT <= 0 && state !== 'clear') {
@@ -3176,11 +3209,65 @@ function drawWinScreen(g) {
   if (Math.sin(perf * 4) > -0.25) text(g, 'ENTER / TAP — RELIVE THE DREAM', VIEW_W / 2, 504, 15, '#69f0ae');
   text(g, 'S OR SHARE RUN · POST THE NEWS', VIEW_W / 2, 530, 8, 'rgba(105,240,174,0.75)');
 }
+/* in-run pause pill — the touch affordance for the coffee break */
+function drawPauseBtn(g) {
+  if (paused || (state !== 'play' && state !== 'intro')) { pauseBtnRect = null; return; }
+  const w = 56, h = 34, x = VIEW_W / 2 - w / 2, y = 16;
+  g.fillStyle = 'rgba(10,14,22,0.45)';
+  g.beginPath(); g.roundRect(x, y, w, h, 8); g.fill();
+  g.strokeStyle = 'rgba(255,255,255,0.25)'; g.lineWidth = 2;
+  g.beginPath(); g.roundRect(x, y, w, h, 8); g.stroke();
+  g.fillStyle = 'rgba(255,255,255,0.8)';
+  g.fillRect(x + w / 2 - 8, y + 9, 5, h - 18);
+  g.fillRect(x + w / 2 + 3, y + 9, 5, h - 18);
+  pauseBtnRect = { x, y, w, h };
+}
+/* coffee-break card — same object language as the end screens */
 function drawPauseOverlay(g) {
-  g.fillStyle = 'rgba(8,12,20,0.66)';
+  g.fillStyle = 'rgba(8,12,20,0.72)';
   g.fillRect(0, 0, VIEW_W, VIEW_H);
-  text(g, 'PAUSED', VIEW_W / 2, VIEW_H / 2 - 30, 28, '#fff');
-  text(g, 'grab a coffee — P resume · M mute · R restart · F11 fullscreen', VIEW_W / 2, VIEW_H / 2 + 26, 11, 'rgba(255,255,255,0.75)');
+  const cw = 560, ch = 540, cx = VIEW_W / 2 - cw / 2, cy = VIEW_H / 2 - ch / 2;
+  g.fillStyle = 'rgba(18,20,26,0.96)';
+  g.beginPath(); g.roundRect(cx, cy, cw, ch, 10); g.fill();
+  g.strokeStyle = '#37474f'; g.lineWidth = 2;
+  g.beginPath(); g.roundRect(cx + 14, cy + 14, cw - 28, ch - 28, 6); g.stroke();
+  /* the mug, with steam that keeps rising while the world waits */
+  g.save();
+  g.translate(cx + cw / 2, cy + 92);
+  g.scale(2.4, 2.4);
+  drawMug(g, 0, 0, true);
+  g.restore();
+  for (let i = 0; i < 3; i++) {
+    const cyc = (perf * 26 + i * 24) % 46;
+    g.fillStyle = `rgba(243,233,220,${0.35 * (1 - cyc / 46)})`;
+    g.beginPath();
+    g.arc(cx + cw / 2 + Math.sin(perf * 1.8 + i * 2.1) * (6 + i * 4), cy + 56 - cyc, 3.5 + i, 0, TAU);
+    g.fill();
+  }
+  text(g, 'COFFEE BREAK', cx + cw / 2, cy + 152, 24, '#f3e9dc');
+  text(g, 'the grind will wait', cx + cw / 2, cy + 182, 9, 'rgba(255,255,255,0.55)');
+  /* menu buttons: RESUME is the visual primary */
+  pauseMenuBtns = [];
+  const items = [
+    { id: 'resume', label: 'RESUME' },
+    { id: 'restart', label: 'RESTART DAY' },
+    { id: 'sound', label: Sound.muted ? 'SOUND: OFF' : 'SOUND: ON' },
+    { id: 'quit', label: 'QUIT TO TITLE' },
+  ];
+  const bw = 340, bh = 62, gap = 14, bx = cx + cw / 2 - bw / 2;
+  let by = cy + 206;
+  for (const it of items) {
+    const primary = it.id === 'resume';
+    g.fillStyle = primary ? 'rgba(67,209,124,0.20)' : 'rgba(255,255,255,0.08)';
+    g.beginPath(); g.roundRect(bx, by, bw, bh, 10); g.fill();
+    g.strokeStyle = primary ? 'rgba(105,240,174,0.7)' : 'rgba(255,255,255,0.25)';
+    g.lineWidth = 2;
+    g.beginPath(); g.roundRect(bx, by, bw, bh, 10); g.stroke();
+    text(g, it.label, cx + cw / 2, by + bh / 2 + 1, 13, primary ? '#b9f6ca' : 'rgba(255,255,255,0.88)');
+    pauseMenuBtns.push({ id: it.id, x: bx, y: by, w: bw, h: bh });
+    by += bh + gap;
+  }
+  text(g, 'P RESUME · R RESTART · M SOUND · Q QUIT', cx + cw / 2, cy + ch - 20, 8, 'rgba(255,255,255,0.4)');
 }
 
 /* ---------------- main loop ---------------- */
@@ -3372,6 +3459,7 @@ function render(dt) {
     const cinematic = charIntro > 0 || !!dialogue;
     if (!endScreen && !cinematic) {
       drawHUD(g);
+      drawPauseBtn(g);
       drawHints(g);
       drawChallengeTarget(g);
     }
@@ -3436,10 +3524,11 @@ loadLevel(0, { ambient: true });
 state = 'title';
 /* dev/QA: ?screen=select parks on a screen; ?dlgtest=N rolls avatar N's opening
    dialogue and stamps the result into the DOM (both harmless in prod) */
-const __park = (location.search.match(/[?&]screen=(title|select|play)/) || [])[1];
+const __park = (location.search.match(/[?&]screen=(title|select|play|pause)/) || [])[1];
 if (__park) {
   if (__park === 'select') state = 'select';
   else if (__park === 'play') { startGame(); charIntro = 0; dialogue = null; }
+  else if (__park === 'pause') { startGame(); charIntro = 0; dialogue = null; state = 'play'; paused = true; }
 }
 const __dlgt = (location.search.match(/[?&]dlgtest=(\d)/) || [])[1];
 if (__dlgt) {

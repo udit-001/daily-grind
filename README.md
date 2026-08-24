@@ -49,7 +49,9 @@ git clone https://github.com/udit-001/daily-grind.git
 | Shift / X / C | Dash |
 | F / 📎 button | Fire the trusty red stapler |
 | ↓ / S (+jump) | Drop through one-way shelves |
-| P / Esc | Pause |
+| P / Esc | Pause (coffee break) |
+| ⏸ pill | Pause (touch · top of screen) |
+| Q | Quit to title (while paused) |
 | M | Mute |
 | R | Restart current day |
 | Enter | Confirm / start |
