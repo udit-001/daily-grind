@@ -200,5 +200,28 @@ window.Sound = (() => {
     return muted;
   }
 
-  return { resume, S, playSong, stopSong, toggleMute, get muted() { return muted; } };
+  /* ---- auto-duck: no sound when the app isn't visible/focused ----
+     Mobile browsers keep WebAudio running in background otherwise — the
+     chiptune follows the user into WhatsApp. Suspending the context pauses
+     music AND sfx and freezes ctx.currentTime, so the sequencer clock
+     stays in sync; resume() on return picks the song up mid-bar. */
+  let ducked = false;   /* true only when WE suspended the context */
+  function setDucked(h) {
+    if (!ctx) return;
+    if (h && ctx.state === 'running') {
+      ducked = true;
+      const p = ctx.suspend(); if (p && p.catch) p.catch(() => {});
+    } else if (!h && ducked) {
+      ducked = false;
+      const p = ctx.resume(); if (p && p.catch) p.catch(() => {});
+    }
+  }
+  document.addEventListener('visibilitychange', () => setDucked(document.hidden));
+  window.addEventListener('blur', () => setDucked(true));
+  window.addEventListener('focus', () => setDucked(false));
+  window.addEventListener('pagehide', () => setDucked(true));
+  window.addEventListener('pageshow', () => setDucked(false));
+
+  return { resume, S, playSong, stopSong, toggleMute, get muted() { return muted; },
+           ctxState: () => (ctx ? ctx.state : 'none') };
 })();
