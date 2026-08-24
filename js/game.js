@@ -48,13 +48,13 @@ const BOSS_TAUNTS = [
 const TITLE_TIPS = [
   'wall-jump: hug a wall mid-air, press jump again',
   'spring chairs launch you to the loot shelves',
-  'chain stomps: AGILE -> SCRUMMED -> SHIP IT -> 10X',
+  'chain stomps: AGILE -> SCRUMMED -> NEEDLE -> SHIP IT -> 10X',
   'employee badges open red security gates',
-  'high-five coworkers for +25 morale',
+  'high-five coworkers for +25 points',
   'grabbed the pager? hand it to a coworker. fast.',
   'high shelves hide extra tickets',
   'ladders: hold UP to climb, jump to hop off',
-  'stapler: tap F — managers take two staples to drop',
+  'stapler: tap F. managers take two staples to drop',
 ];
 
 const PAL = {
@@ -355,9 +355,9 @@ const SCRIPT_POOL = {
     ]],
     boss: [[
       { who: 'ceo', text: 'Sit down, {name}.' },
-      { who: 'ceo', text: 'You cannot resign. Interns can\u2019t quit. That\u2019s like walking out of a movie trailer \u2014 you already agreed.' },
+      { who: 'ceo', text: 'You cannot resign. Interns can\u2019t quit. That\u2019s like walking out of a movie trailer. You already agreed.' },
       { who: 'you', text: 'I understood none of that, and I am leaving.' },
-      { who: 'ceo', text: 'Then come and USE it, champ.' },
+      { who: 'ceo', text: 'Leaving needs an exit, champ. There\u2019s one on this floor and it stays locked till I say otherwise. Get past me first. Then come and USE it.' },
     ]],
     win: [[
       { who: 'ceo', text: 'Fine... FINE. Your badge works on the way out.' },
@@ -370,7 +370,7 @@ const SCRIPT_POOL = {
     open: [[
       { who: 'manager', text: '{name}. The {client} account. Client calls in ten minutes. Where is it?' },
       { who: 'you', text: 'Filed as BUG-1043: \u201C{client} account missing.\u201D Severity: blocker. Assignee: anyone but me.' },
-      { who: 'manager', text: 'That\u2019s what I thought. Overtime. Tonight.' },
+      { who: 'manager', text: 'Not anymore. I reassigned it. To you. Effective immediately. Overtime. Tonight.' },
       { who: 'you', text: 'Actually... I quit. Repro steps: show up Monday. Fails every Monday. 100% rate.' },
       { who: 'manager', text: 'Ha! Good one. See you at standup.' },
       { who: 'you', text: '(Not this time. Root cause found. It\u2019s this building.)' },
@@ -379,7 +379,7 @@ const SCRIPT_POOL = {
       { who: 'ceo', text: 'Sit down, Priya.' },
       { who: 'ceo', text: 'You cannot resign. I marked your resignation WONTFIX.' },
       { who: 'you', text: 'It auto-reopens every sprint. Resignations are flaky like that.' },
-      { who: 'ceo', text: 'Then come and USE it, champ. QA the door.' },
+      { who: 'ceo', text: 'So is the exit door on this floor. It stays locked until you get past me. QA that, champ.' },
     ]],
     win: [[
       { who: 'ceo', text: 'Fine... FINE. Your badge works on the way out.' },
@@ -392,7 +392,7 @@ const SCRIPT_POOL = {
     open: [[
       { who: 'manager', text: '{name}. The {client} account. Client calls in ten minutes. Where is it?' },
       { who: 'you', text: 'Closed it! Then upsold the client to our biggest competitor. Huge win. For them. Bittersweet!' },
-      { who: 'manager', text: 'That\u2019s what I thought. Overtime. Tonight.' },
+      { who: 'manager', text: 'You handed our biggest account to our biggest competitor. Win it back. Overtime. Tonight.' },
       { who: 'you', text: 'Actually... I quit! Big picture: you lose a top performer, gain a LinkedIn connection. Win-win!' },
       { who: 'manager', text: 'Ha! Good one. See you at standup.' },
       { who: 'you', text: '(Not this time. This walkout is going straight to the highlight reel.)' },
@@ -401,7 +401,7 @@ const SCRIPT_POOL = {
       { who: 'ceo', text: 'Sit down, Chad.' },
       { who: 'ceo', text: 'You cannot resign. You\u2019re my number one guy. I say that to four guys.' },
       { who: 'you', text: 'Let\u2019s take this offline. Forever. I call it a strategic handoff.' },
-      { who: 'ceo', text: 'Then come and USE it, champ. Great curb appeal on that door.' },
+      { who: 'ceo', text: 'Handoff denied. There\u2019s one way off this floor and it\u2019s right behind me. Great curb appeal. Come and USE it, champ.' },
     ]],
     win: [[
       { who: 'ceo', text: 'Fine... FINE. Your badge works on the way out.' },
@@ -414,8 +414,8 @@ const SCRIPT_POOL = {
     open: [[
       { who: 'manager', text: '{name}. The {client} account. Client calls in ten minutes. Where is it?' },
       { who: 'you', text: 'Let me file that under \u201Cthings we both know won\u2019t happen.\u201D Done! Still smiling!' },
-      { who: 'manager', text: 'That\u2019s what I thought. Overtime. Tonight.' },
-      { who: 'you', text: 'Actually... I quit! Still smiling. That\u2019s the scary part. Ask HR. Oh wait \u2014 I AM HR.' },
+      { who: 'manager', text: 'Then unfile it. The account exists. Find it. Overtime. Tonight.' },
+      { who: 'you', text: 'Actually... I quit! Still smiling. That\u2019s the scary part. Ask HR. Oh wait, I AM HR.' },
       { who: 'manager', text: 'Ha! Good one. See you at standup.' },
       { who: 'you', text: '(Not this time. I scheduled this resignation weeks ago. It\u2019s recurring.)' },
     ]],
@@ -423,7 +423,7 @@ const SCRIPT_POOL = {
       { who: 'ceo', text: 'Sit down, Meera.' },
       { who: 'ceo', text: 'You cannot resign. We\u2019re a family here. A family I legally own.' },
       { who: 'you', text: 'I wrote the policy on that. Filed under \u201Chostage situations, with snacks.\u201D' },
-      { who: 'ceo', text: 'Then come and USE it, champ.' },
+      { who: 'ceo', text: 'Reread section two, champ. Exits stay locked until I approve them. Come and USE it.' },
     ]],
     win: [[
       { who: 'ceo', text: 'Fine... FINE. Your badge works on the way out.' },
@@ -2161,7 +2161,7 @@ function buildShareWin(url) {
   return 'RESIGNED. Score ' + totals.score + ' \u00B7 rank: ' + rk + '\n' +
     'Beat me: ' + (url || challengeURL()) + '\n' +
     '\u2615' + totals.coffees + ' \u00B7 \u{1F3AB}' + totals.files + ' \u00B7 \u{1F4A5}' + totals.stomps + ' managers \u00B7 \u{1F480}' + totals.deaths + ' rage quits \u00B7 \u26A1x' + Math.max(1, totals.maxCombo || 0) + '\n' +
-    mm + ':' + ss + ' on the clock \u2014 ' + empName() + ', ' + empDept();
+    mm + ':' + ss + ' on the clock. ' + empName() + ', ' + empDept();
 }
 function buildShareDead(url) {
   let s = 'TERMINATED. Score ' + totals.score + '. Cause: ' + pickDeathMsg + '\n' +
@@ -3179,7 +3179,7 @@ function drawStaffSelect(g) {
 const INTRO_QUOTES = [
   'FIRST DAY. HOPE IN EVERY POCKET.',
   'FILED 47 BUGS BEFORE 9 AM.',
-  'CRUSHED Q3. AND THE COPIER.',
+  'CLOSED MY QUOTA. AND THE COPIER.',
   'HERE TO HELP. ALLEGEDLY.',
 ];
 function drawCharIntro(g) {
