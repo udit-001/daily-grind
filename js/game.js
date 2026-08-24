@@ -121,6 +121,7 @@ function clampCam() {
   camX = clamp(camX, b[0], b[1]);
 }
 window.addEventListener('resize', () => {
+  noteFsHeight();
   applyViewport();
   clampCam();
 });
@@ -204,6 +205,9 @@ window.addEventListener('blur', () => {
 });
 cv.addEventListener('pointerdown', e => {
   Sound.resume();
+  /* retry a failed fullscreen request while this tap is still a fresh user
+     gesture — the tap keeps its normal meaning (menu/resume/jump) */
+  if (fsWant && !inFullscreen()) toggleFullscreen();
   const __r = cv.getBoundingClientRect();
   const __vx = (e.clientX - __r.left) / __r.width * VIEW_W;
   const __vy = (e.clientY - __r.top) / __r.height * VIEW_H;
@@ -216,6 +220,7 @@ cv.addEventListener('pointerdown', e => {
     else advanceDialogue();
     return;
   }
+  if (state === 'title' || state === 'select') rideTitleFullscreen();
   if (state === 'select') { handleSelectTap(e); return; }
   onConfirm();
 });
@@ -284,9 +289,30 @@ if (window.matchMedia && matchMedia('(pointer: coarse)').matches) {
 }
 
 /* ---------------- fullscreen ---------------- */
+const TOUCH_UI = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+let fsWant = false;   /* user asked for fullscreen but the request failed —
+                         retry silently on the next tap (activation may have
+                         expired, e.g. the tap that refocused the tab) */
+function rawFsElement() {
+  return document.fullscreenElement || document.webkitFullscreenElement ||
+         document.mozFullScreenElement || document.msFullscreenElement;
+}
+let fsH = 0;   /* tallest innerHeight seen while a fullscreen element was set.
+                  Mobile fullscreen covers the whole screen, so a much smaller
+                  viewport means the browser quietly left fullscreen (stale flag) */
+function noteFsHeight() { if (rawFsElement()) fsH = Math.max(fsH, window.innerHeight); }
 function inFullscreen() {
-  return !!(document.fullscreenElement || document.webkitFullscreenElement ||
-            document.mozFullScreenElement || document.msFullscreenElement);
+  const el = rawFsElement();
+  if (!el) return false;
+  /* Android Chrome can background-exit fullscreen without firing
+     fullscreenchange, leaving a STALE fullscreenElement while windowed.
+     Every toggle tap then takes the exit branch (a no-op) and fullscreen
+     looks permanently broken. Cross-check the viewport: browser chrome
+     reappearing shrinks innerHeight well below the fullscreen height.
+     A false negative here is harmless (an extra request resolves fast). */
+  if (TOUCH_UI && window.innerHeight < fsH * 0.92) return false;
+  if (TOUCH_UI && !fsH && window.innerHeight < window.screen.height * 0.7) return false;
+  return true;
 }
 function toggleFullscreen() {
   const d = document;
@@ -299,8 +325,10 @@ function toggleFullscreen() {
     const el = d.documentElement;
     const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
     if (req) {
+      fsWant = true;
       const r = req.call(el);
-      /* mobile browsers (iOS Safari) reject fullscreen — swallow it, never throws */
+      /* mobile browsers (iOS Safari) reject fullscreen — swallow it, never throws.
+         fsWant stays set: the next user tap retries (see cv/fsbtn handlers). */
       if (r && r.catch) r.catch(() => {});
       else applyViewport();
     }
@@ -310,10 +338,43 @@ document.addEventListener('fullscreenchange', onFsChange);
 document.addEventListener('webkitfullscreenchange', onFsChange);
 document.addEventListener('mozfullscreenchange', onFsChange);
 document.addEventListener('msfullscreenchange', onFsChange);
+for (const pfx of ['', 'webkit', 'moz', 'ms']) {
+  document.addEventListener(pfx + 'fullscreenerror', () => { syncFsBtn(); });
+}
+/* landscape lock: once fullscreen on a phone, hold the orientation so an
+   accidental device rotation can't resize the viewport and pause mid-run.
+   Needs fullscreen (Android Chrome); iOS Safari has no lock API — there the
+   portrait gate already pauses gracefully instead. */
+function lockLandscape() {
+  try {
+    const so = screen.orientation;
+    if (so && so.lock) {
+      const r = so.lock('landscape');
+      if (r && r.catch) r.catch(() => {});   /* unsupported/denied — gate handles it */
+    }
+  } catch (e) {}
+}
+function unlockOrientation() {
+  try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
+}
+/* coming back to the tab: Chrome may tear fullscreen down late or silently —
+   resync, and if the user wanted fullscreen, take another shot at it */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    syncFsBtn(); applyViewport();
+    if (fsWant && !inFullscreen()) toggleFullscreen();
+  }
+});
 /* ESC in fullscreen is browser-owned: the page never sees that keydown, the
    browser just exits. Riding fullscreenchange keeps ESC = pause in BOTH modes
    (established PC-game behavior: losing fullscreen/focus mid-run pauses). */
 function onFsChange() {
+  if (inFullscreen()) {
+    fsWant = false; noteFsHeight();   /* got what we wanted */
+    if (TOUCH_UI) lockLandscape();
+  } else if (TOUCH_UI) {
+    unlockOrientation();              /* windowed again — give rotation back */
+  }
   syncFsBtn(); applyViewport();
   if (!inFullscreen() && (state === 'play' || state === 'intro') && !paused && !dialogue && !charIntro) paused = true;
 }
@@ -325,6 +386,14 @@ function syncFsBtn() {
 {
   const b = document.getElementById('fsbtn');
   if (b) b.addEventListener('pointerdown', e => { e.preventDefault(); Sound.resume(); buzz(10); toggleFullscreen(); });
+}
+
+/* title/select screens: the tap IS the user gesture — ride it into fullscreen
+   on phones so the run starts immersive (and after a background-exit, this is
+   the natural re-entry gesture). iOS rejection is swallowed inside
+   toggleFullscreen; the game still plays windowed there. */
+function rideTitleFullscreen() {
+  if (TOUCH_UI && !inFullscreen()) toggleFullscreen();
 }
 
 /* ---------------- audio alias ---------------- */
@@ -400,7 +469,7 @@ const SCRIPT_POOL = {
       { who: 'you', text: '(Not this time. Root cause found. It\u2019s this building.)' },
     ]],
     boss: [[
-      { who: 'ceo', text: 'Sit down, Priya.' },
+      { who: 'ceo', text: 'Sit down, {name}.' },
       { who: 'ceo', text: 'You cannot resign. I marked your resignation WONTFIX.' },
       { who: 'you', text: 'It auto-reopens every sprint. Resignations are flaky like that.' },
       { who: 'ceo', text: 'So is the exit door on this floor. It stays locked until you get past me. QA that, champ.' },
@@ -422,7 +491,7 @@ const SCRIPT_POOL = {
       { who: 'you', text: '(Not this time. This walkout is going straight to the highlight reel.)' },
     ]],
     boss: [[
-      { who: 'ceo', text: 'Sit down, Chad.' },
+      { who: 'ceo', text: 'Sit down, {name}.' },
       { who: 'ceo', text: 'You cannot resign. You\u2019re my number one guy. I say that to four guys.' },
       { who: 'you', text: 'Let\u2019s take this offline. Forever. I call it a strategic handoff.' },
       { who: 'ceo', text: 'Handoff denied. There\u2019s one way off this floor and it\u2019s right behind me. Great curb appeal. Come and USE it, champ.' },
@@ -444,7 +513,7 @@ const SCRIPT_POOL = {
       { who: 'you', text: '(Not this time. I scheduled this resignation weeks ago. It\u2019s recurring.)' },
     ]],
     boss: [[
-      { who: 'ceo', text: 'Sit down, Meera.' },
+      { who: 'ceo', text: 'Sit down, {name}.' },
       { who: 'ceo', text: 'You cannot resign. We\u2019re a family here. A family I legally own.' },
       { who: 'you', text: 'I wrote the policy on that. Filed under \u201Chostage situations, with snacks.\u201D' },
       { who: 'ceo', text: 'Reread section two, champ. Exits stay locked until I approve them. Come and USE it.' },
@@ -609,12 +678,26 @@ try { bestScore = parseInt(localStorage.getItem('tdg_best') || '0', 10) || 0; } 
 try { bestName = localStorage.getItem('tdg_best_name') || ''; } catch (e) {}
 
 /* ---- your workwife: a persistent employee identity (the "Rishabh on the leaderboard" factor) ---- */
-const EMP_FIRST = ['ARJUN', 'PRIYA', 'SAMIR', 'MEERA', 'ROHIT', 'ANEESH', 'DIVYA', 'KARTIK', 'NEHA', 'VIKRAM', 'TANYA', 'OMER'];
+/* ---- regional names: the roster reads local wherever you clock in from.
+   Cloudflare Pages serves /cdn-cgi/trace with loc=<country> on every request
+   (built in, zero config). 'in' doubles as the default pool — the game's
+   home flavor. Staff first names never appear in their region's intern pool. ---- */
+const NAME_REGIONS = {
+  in:    { intern: ['ARJUN', 'SAMIR', 'ROHIT', 'ANEESH', 'DIVYA', 'KARTIK', 'NEHA', 'VIKRAM', 'TANYA', 'OMER'],
+           qa: 'PRIYA', sales: 'CHAD', hr: 'MEERA' },
+  anglo: { intern: ['TYLER', 'JOSH', 'BRIANNA', 'CONNOR', 'ASHLEY', 'DYLAN', 'PAIGE', 'AUSTIN', 'HARPER', 'LOGAN', 'SIENNA', 'HEATHER'],
+           qa: 'MEGAN', sales: 'BRAD', hr: 'WHITNEY' },
+  latam: { intern: ['DIEGO', 'CAMILA', 'MATEO', 'SANTIAGO', 'LUCIANA', 'ANDRES', 'RENATA', 'JAVIER', 'FERNANDA', 'BRUNO', 'LARISSA', 'EMILIANO'],
+           qa: 'XIMENA', sales: 'RODRIGO', hr: 'PALOMA' },
+  eu:    { intern: ['LUKAS', 'ANNA', 'FELIX', 'HUGO', 'JONAS', 'ELENA', 'PIETER', 'SOFIA', 'EMIL', 'OLIVER', 'MILA', 'ENZO'],
+           qa: 'ASTRID', sales: 'MAX', hr: 'LOTTE' },
+};
+let regionId = 'in';
 const EMP_DEPT = ['FROM ACCOUNTING', 'FROM QA', 'FROM SALES', '\u00B7 BACKLOG BARISTA', '\u00B7 MEETING SURVIVOR', '\u00B7 Q4 CASUALTY', 'FROM HR (SORRY)', '\u00B7 STANDUP COMEDIAN', 'FROM IT \u00B7 TRIED TURNING IT OFF AND ON', '\u00B7 AGILE VICTIM', 'FROM LEGAL', '\u00B7 COFFEE-BASED LIFEFORM'];
 let employee = null;
 try { employee = JSON.parse(localStorage.getItem('tdg_employee') || 'null'); } catch (e) {}
 if (!employee || !employee.n) {
-  employee = { n: pick(EMP_FIRST), d: pick(EMP_DEPT) };
+  employee = { n: pick(NAME_REGIONS[regionId].intern), d: pick(EMP_DEPT) };
   try { localStorage.setItem('tdg_employee', JSON.stringify(employee)); } catch (e) {}
 }
 
@@ -637,20 +720,70 @@ const AVATARS = [
   { id: 'intern', name: 'THE INTERN \u00B7 DAY ONE', blurb: '4 HEARTS \u00B7 SLIPS PAST GATES \u00B7 FAST CLIMB', tint: '#ffffff',
     card: { perk: '+4 MORALE', world: 'FAST CLIMB · SLIPS GATES', ouch: 'NOTHING. HE SUFFERS.' },
     opts: {}, kit: { maxHearts: 4, aggroMul: 220 / 310, climbMul: 1.35, gateSkip: true } },
-  { id: 'priya', name: 'PRIYA \u00B7 QA, SHIPS SHAMELESSLY', fname: 'PRIYA', fdept: 'FROM QA', blurb: 'TWIN-STAPLES \u00B7 BELT-PROOF \u00B7 JAMS SHREDDERS', tint: '#ce93d8',
+  { id: 'priya', name: '', role: 'QA, SHIPS SHAMELESSLY', fdept: 'FROM QA', blurb: 'TWIN-STAPLES \u00B7 BELT-PROOF \u00B7 JAMS SHREDDERS', tint: '#ce93d8',
     card: { perk: 'TWIN-STAPLE BURST', world: 'BELT-PROOF · JAMS SHREDS', ouch: 'SLOWER FIRE CYCLE' },
     opts: { hair: '#2b1a12', hairLong: true, shirt: '#8d5a9e', pants: '#37474f', skin: '#eab98a', tie: 'none', lanyard: '#c2185b' },
     kit: { twinStaple: true, fireCdMul: 1.25, beltImmune: true, stapleJam: true } },
-  { id: 'chad', name: 'CHAD \u00B7 SALES, 10X ENERGY', fname: 'CHAD', fdept: 'FROM SALES', blurb: 'TRIPLE JUMP \u00B7 BIG SPRINGS \u00B7 2 HEARTS MAX', tint: '#90caf9',
+  { id: 'chad', name: '', role: 'SALES, 10X ENERGY', fdept: 'FROM SALES', blurb: 'TRIPLE JUMP \u00B7 BIG SPRINGS \u00B7 2 HEARTS MAX', tint: '#90caf9',
     card: { perk: 'TRIPLE JUMP · FAST DASH', world: 'BIG SPRING LAUNCHES', ouch: '2 HEARTS MAX' },
     opts: { hair: '#c99a54', shirt: '#90caf9', pants: '#263238', tie: '#ffb300', skin: '#ffd9b3', shades: true },
     kit: { airJumps: 2, dashCdMul: 0.7, maxHearts: 2, springMul: 1.22 } },
-  { id: 'meera', name: 'MEERA \u00B7 HR, SMILING DANGER', fname: 'MEERA', fdept: 'FROM HR (SORRY)', blurb: 'CHEATS DEATH \u00B7 DRONE IMMUNITY \u00B7 SLOW', tint: '#80cbc4',
+  { id: 'meera', name: '', role: 'HR, SMILING DANGER', fdept: 'FROM HR (SORRY)', blurb: 'CHEATS DEATH \u00B7 DRONE IMMUNITY \u00B7 SLOW', tint: '#80cbc4',
     card: { perk: 'CHEATS DEATH ONCE', world: 'HR DRONES IGNORE HER', ouch: '-8% MOVE SPEED' },
     opts: { hair: '#1a1a1a', bun: true, skirt: true, shirt: '#26a69a', pants: '#455a64', skin: '#c98d5a', glasses: true, tie: 'none' },
     kit: { saveOnce: true, comboTMul: 1.32, moveMul: 0.92, droneFriendly: true } },
 ];
 for (const a of AVATARS) a.kit = Object.assign({}, BASE_KIT, a.kit);
+/* names resolve against the active region: fixed staff get local first names,
+   the intern pool stays collision-free with them. Runs at boot (default
+   region) and again when detection lands. */
+const STAFF_ROLE_OF = { priya: 'qa', chad: 'sales', meera: 'hr' };
+function refreshNames() {
+  const R = NAME_REGIONS[regionId];
+  for (const a of AVATARS) {
+    const key = STAFF_ROLE_OF[a.id];
+    if (!key) continue;
+    a.fname = R[key];
+    a.name = a.fname + ' \u00B7 ' + a.role;
+  }
+  /* a saved identity from another region re-rolls into the local pool */
+  if (!R.intern.includes(employee.n)) {
+    employee.n = pick(R.intern);
+    try { localStorage.setItem('tdg_employee', JSON.stringify(employee)); } catch (e) {}
+  }
+  /* the intern's rolled name must never collide with the NAMED staff —
+     "PRIYA · BACKLOG BARISTA" next to selectable PRIYA reads as a clone */
+  const staff = new Set(AVATARS.map(a => a.fname).filter(Boolean));
+  if (staff.has(employee.n)) {
+    employee.n = pick(R.intern.filter(n => !staff.has(n)));
+    try { localStorage.setItem('tdg_employee', JSON.stringify(employee)); } catch (e) {}
+  }
+}
+refreshNames();
+
+/* region detection: Cloudflare exposes the visitor's country on every request;
+   /cdn-cgi/trace prints it as loc=<country> — no worker, no config */
+(function detectRegion() {
+  const apply = r => { if (NAME_REGIONS[r] && r !== regionId) { regionId = r; refreshNames(); } };
+  const countryToRegion = cc => {
+    if (['US', 'CA', 'GB', 'IE', 'AU', 'NZ', 'ZA'].includes(cc)) return 'anglo';
+    if (['MX', 'BR', 'AR', 'CL', 'CO', 'PE', 'UY', 'PY', 'BO', 'EC', 'VE', 'GT', 'CR', 'PA', 'DO', 'HN', 'NI', 'SV', 'CU', 'PT', 'ES'].includes(cc)) return 'latam';
+    if (['DE', 'FR', 'IT', 'NL', 'BE', 'LU', 'SE', 'NO', 'DK', 'FI', 'IS', 'PL', 'CZ', 'SK', 'AT', 'CH', 'HU', 'RO', 'BG', 'GR', 'HR', 'SI', 'RS', 'UA', 'LT', 'LV', 'EE', 'MT', 'CY', 'MC', 'AD', 'SM', 'LI'].includes(cc)) return 'eu';
+    return 'in';
+  };
+  fetch('/cdn-cgi/trace', { cache: 'no-store' })
+    .then(r => r.ok ? r.text() : Promise.reject(0))
+    .then(t => { const m = t.match(/^loc=([A-Z]{2})\s*$/m); if (m) apply(countryToRegion(m[1])); })
+    .catch(() => {
+      /* not behind Cloudflare (local dev etc.) — coarse timezone guess */
+      try {
+        const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone || '');
+        if (/^Europe\//.test(tz)) apply('eu');
+        else if (/^Australia\//.test(tz) || /^America\/(New_York|Chicago|Denver|Los_Angeles|Toronto|Vancouver|Phoenix|Halifax|Anchorage|Edmonton|Winnipeg)/.test(tz)) apply('anglo');
+        else if (/^America\//.test(tz)) apply('latam');
+      } catch (e) {}
+    });
+})();
 const KIT = () => AVATARS[avatarIdx].kit;
 /* identity follows the SELECTED staff member (intern keeps a random name —
    the other three are who they are). fixes "why does it say Meera?" */

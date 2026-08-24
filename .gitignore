@@ -6,3 +6,6 @@ dist/
 dev-shots/
 .DS_Store
 node_modules/
+
+# local debug artifacts
+debug/
