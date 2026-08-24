@@ -3236,7 +3236,8 @@ function drawStaffSelect(g) {
       g.translate(x + CW / 2, y + CH - 35); g.scale(pul, pul);
       g.fillStyle = '#69f0ae';
       g.beginPath(); g.roundRect(-74, -21, 148, 42, 10); g.fill();
-      text(g, 'SIGN', 0, 1, 14, '#0b3d1f');
+      /* label without the drop-shadow helper — shadow on the bright button read as a smear */
+      text(g, 'SIGN', 0, 0, 14, '#0b3d1f', 'center', false);
       g.restore();
     }
   }
