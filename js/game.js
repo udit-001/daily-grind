@@ -208,16 +208,20 @@ function syncUIButtons() {
   if (uiBtns.share) uiBtns.share.classList.toggle('show', state === 'win' || state === 'gameover');
   const tfire = document.getElementById('tfire');
   if (tfire) tfire.style.opacity = (player && player.hasStapler) ? '' : '0.35';   /* dimmed until grabbed */
-  /* Story cinematics (punch-in card + dialogue letterbox) are watch-mode:
-     no controls needed. Hide every touch button and the fullscreen toggle
-     so the letterbox reads clean. Staff-select keeps only its own ‹ › arrows. */
+  /* ── interaction-structure matrix: one control set per screen state ──
+     title/end screens: only the fullscreen toggle (nothing to play yet)
+     select: only the character ‹ › arrows (tap a card to sign)
+     cinematics: nothing — watch mode
+     play: touch controls only (fs toggle would cover the HUD; F11/pause remain)
+     in fullscreen: hide the toggle — exit is the system gesture */
   const cinematic = charIntro > 0 || !!dialogue;
+  const endScreen = state === 'win' || state === 'gameover';
   const fs = document.getElementById('fsbtn');
-  if (fs) fs.classList.toggle('show', state !== 'play' && state !== 'intro' && state !== 'select' && !cinematic);
-  const hideTouch = state === 'select' || cinematic;
+  if (fs) fs.classList.toggle('show', (state === 'title' || endScreen) && !inFullscreen());
+  const showTouch = state === 'play' && !cinematic && !paused;
   for (const id of ['tleft', 'tright', 'tjump', 'tdash', 'tdown', 'tfire']) {
     const el = document.getElementById(id);
-    if (el) el.style.display = hideTouch ? 'none' : '';
+    if (el) el.style.display = showTouch ? '' : 'none';
   }
 }
 
@@ -1904,6 +1908,10 @@ function startGame() {
   runHasStapler = false;
   bossIntroPlayed = false;
   curHint = null;
+  /* phones: the tap that signs the staff card IS the user gesture — ride it
+     into fullscreen so the run starts immersive (iOS rejection is swallowed
+     inside toggleFullscreen; the game still plays windowed there) */
+  if (window.matchMedia && matchMedia('(pointer: coarse)').matches && !inFullscreen()) toggleFullscreen();
   loadLevel(0);
   /* jetpack-joyride-style punch-in card: the chosen staffer's moment */
   dayBannerStash = banner; banner = null;
