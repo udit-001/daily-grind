@@ -209,9 +209,11 @@ function syncUIButtons() {
   const tfire = document.getElementById('tfire');
   if (tfire) tfire.style.opacity = (player && player.hasStapler) ? '' : '0.35';   /* dimmed until grabbed */
   /* fullscreen toggle: visible on menus/screens, hidden during play/intro so it
-     never covers the HUD (hearts/combo/score live in the top corners) */
+     never covers the HUD (hearts/combo/score live in the top corners).
+     The staff-select screen sets its own full-screen overlay, so only the
+     character ‹ › arrows (and a tap-to-sign) belong there — hide it here too. */
   const fs = document.getElementById('fsbtn');
-  if (fs) fs.classList.toggle('show', state !== 'play' && state !== 'intro');
+  if (fs) fs.classList.toggle('show', state !== 'play' && state !== 'intro' && state !== 'select');
   /* staff-select already has its own mid-screen ‹ › arrows — hide the bottom
      movement arrows there so the two never double up on mobile */
   const hideMove = state === 'select';
