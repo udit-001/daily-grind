@@ -52,6 +52,8 @@ git clone https://github.com/udit-001/daily-grind.git
 | P / Esc | Pause (coffee break) |
 | ⏸ pill | Pause (touch · top of screen) |
 | Q | Quit to title (while paused) |
+
+Haptic buzz on damage, stomps, boss hits, checkpoints and button taps — Android only; iOS Safari doesn't support the Vibration API and silently skips it.
 | M | Mute |
 | R | Restart current day |
 | Enter | Confirm / start |

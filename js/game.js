@@ -182,7 +182,7 @@ cv.addEventListener('pointerdown', e => {
   const __vx = (e.clientX - __r.left) / __r.width * VIEW_W;
   const __vy = (e.clientY - __r.top) / __r.height * VIEW_H;
   if (paused) { handlePauseMenuTap(__vx, __vy); return; }   /* menu buttons only — no accidental resume */
-  if (pauseBtnHit(__vx, __vy)) { togglePause(); SFX.click(); return; }
+  if (pauseBtnHit(__vx, __vy)) { togglePause(); SFX.click(); buzz(10); return; }
   if (charIntro > 0) { endPunchIn(); return; }
   if (dialogue) { advanceDialogue(); return; }
   if (state === 'select') { handleSelectTap(e); return; }
@@ -197,15 +197,15 @@ const uiBtns = {
   share: document.getElementById('sharebtn'),
 };
 if (uiBtns.charL) uiBtns.charL.addEventListener('pointerdown', e => {
-  e.preventDefault(); Sound.resume();
+  e.preventDefault(); Sound.resume(); buzz(10);
   if (state === 'select') { setAvatar(avatarIdx - 1); SFX.click(); }
 });
 if (uiBtns.charR) uiBtns.charR.addEventListener('pointerdown', e => {
-  e.preventDefault(); Sound.resume();
+  e.preventDefault(); Sound.resume(); buzz(10);
   if (state === 'select') { setAvatar(avatarIdx + 1); SFX.click(); }
 });
 if (uiBtns.share) uiBtns.share.addEventListener('pointerdown', e => {
-  e.preventDefault(); Sound.resume();
+  e.preventDefault(); Sound.resume(); buzz(10);
   if (state === 'win' || state === 'gameover') doShare();
 });
 function syncUIButtons() {
@@ -237,7 +237,7 @@ if (window.matchMedia && matchMedia('(pointer: coarse)').matches) {
   const bind = (id, down, up) => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.addEventListener('pointerdown', e => { e.preventDefault(); Sound.resume(); down(); });
+    el.addEventListener('pointerdown', e => { e.preventDefault(); Sound.resume(); buzz(10); down(); });
     el.addEventListener('pointerup', e => { e.preventDefault(); up(); });
     el.addEventListener('pointercancel', () => up());
     el.addEventListener('pointerleave', () => up());
@@ -285,11 +285,17 @@ function syncFsBtn() {
 }
 {
   const b = document.getElementById('fsbtn');
-  if (b) b.addEventListener('pointerdown', e => { e.preventDefault(); Sound.resume(); toggleFullscreen(); });
+  if (b) b.addEventListener('pointerdown', e => { e.preventDefault(); Sound.resume(); buzz(10); toggleFullscreen(); });
 }
 
 /* ---------------- audio alias ---------------- */
 const SFX = Sound.S;
+
+/* ── haptics: buzz on meaningful events only (damage, stomps, boss, checkpoints,
+   UI taps). Android vibrates; iOS Safari has no Vibration API and skips silently.
+   Desktop is gated out by the coarse-pointer check. ── */
+const HAPTIC_OK = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches && 'vibrate' in navigator);
+function buzz(p) { if (HAPTIC_OK) { try { navigator.vibrate(p); } catch (e) {} } }
 
 /* ---------------- game state ---------------- */
 let state = 'boot';           // title | select | intro | play | clear | gameover | win
@@ -973,6 +979,7 @@ function hurtPlayer(cause, srcX) {
   p.climbing = false; p.climbLock = 0;
   p.hearts--;
   SFX.hurt();
+  buzz(80);
   shake(0.5);
   freezeT = 0.05;
   addPop(p.cx, p.y - 14, deathMsg(cause) || 'Ouch.', '#ff8a80', 13);
@@ -1011,6 +1018,7 @@ function gameOver(cause) {
   state = 'gameover';
   Sound.stopSong();
   SFX.death();
+  buzz([60, 50, 60, 50, 120]);
   setTimeout(() => SFX.stamp(), 420);
   saveBest();
 }
@@ -1033,6 +1041,7 @@ function stompEnemy(m) {
   m.squashed = 0.001;
   registerStomp(m.cx, m.y - 8, 'SYNERGIZED!', '#b9f6ca');
   SFX.stomp();
+  buzz(20);
   bouncePlayer();
   freezeT = 0.05; shake(0.25);
   dust(m.cx, m.y + m.h, 8, 130);
@@ -1415,6 +1424,7 @@ function updatePlayer(dt) {
       if (p.hearts < KIT().maxHearts) { p.hearts++; addPop(ck.x, ck.y - 96, 'MORALE +1', '#69f0ae'); }
       addPop(ck.x, ck.y - 70, 'CHECKPOINT', '#69f0ae');
       SFX.checkpoint();
+      buzz(30);
       sparkle(ck.x, ck.y - 62, '#69f0ae', 10);
     }
   }
@@ -1507,7 +1517,7 @@ function updateIntern(n, dt) {
     if (stomp) {
       n.squashed = 0.001;
       registerStomp(n.cx, n.y - 8, 'MENTORED!', '#b2ebf2');
-      SFX.stomp(); bouncePlayer(); freezeT = 0.04; shake(0.2);
+      SFX.stomp(); buzz(20); bouncePlayer(); freezeT = 0.04; shake(0.2);
       dust(n.cx, n.y + n.h, 6, 110);
     } else hurtPlayer('intern', n.cx);
   }
@@ -1524,7 +1534,7 @@ function updateDrone(d, dt) {
     if (stomp) {
       d.dead = true;
       registerStomp(d.cx, d.y - 10, 'DEFLECTED!', '#b3e5fc');
-      SFX.stomp(); bouncePlayer(); freezeT = 0.04; shake(0.22);
+      SFX.stomp(); buzz(20); bouncePlayer(); freezeT = 0.04; shake(0.22);
       for (let i = 0; i < 8; i++) addPart({
         x: d.cx + rand(-8, 8), y: d.y + rand(-4, 12), vx: rand(-180, 180), vy: rand(-240, -40),
         g: 420, life: rand(0.4, 0.7), size: rand(3, 5), color: '#eceff1', shape: 'circle',
@@ -1578,7 +1588,7 @@ function updatePlanes(dt) {
         if (player.vy > 140 && (player.prevY + player.h) <= hb.y + 14) {
           pl.crumple = 0.001; pl.vy = -140;
           registerStomp(pl.x, pl.y - 16, 'RECYCLED!', '#b3e5fc');
-          SFX.stomp();
+          SFX.stomp(); buzz(20);
           bouncePlayer();
           freezeT = 0.04; shake(0.2);
           for (let i = 0; i < 6; i++) addPart({
@@ -1694,7 +1704,8 @@ function updateStaples(dt) {
         s.dead = true;
         totals.score += 400;
         addPop(boss.cx, boss.y - 16, '+400 STAPLED!', '#ffab91');
-        SFX.bossHit(); freezeT = 0.05; shake(0.3);
+        SFX.bossHit();
+        buzz(30); freezeT = 0.05; shake(0.3);
         sparkle(boss.cx, boss.y + 30, '#ff8a65', 10);
         if (boss.hp <= 0) killBoss();
         else { boss.st = 'idle'; boss.t = 0.35; }
@@ -1873,6 +1884,7 @@ function updateBoss(dt) {
       totals.score += 500;
       addPop(b.cx, b.y - 16, '+500 PINK-SLIPPED!', '#ffab91');
       SFX.bossHit();
+      buzz([30, 40, 60]);
       bouncePlayer();
       freezeT = 0.09; shake(0.65);
       sparkle(b.cx, b.y + 24, '#ff8a65', 14);
@@ -1890,6 +1902,7 @@ function killBoss() {
   totals.score += 2000;
   addPop(b.cx, b.y - 24, pick(['YOU ARE FREE!', 'BRUTAL. BUT FAIR.']), '#ffd54f', 17);
   SFX.thud();
+  buzz([40, 60, 120]);
   setTimeout(() => SFX.fanfare(), 500);
   Sound.stopSong();
   freezeT = 0.5;
@@ -2012,7 +2025,7 @@ function pauseBtnHit(x, y) {
 function handlePauseMenuTap(x, y) {
   for (const b of pauseMenuBtns) {
     if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
-      SFX.click();
+      SFX.click(); buzz(10);
       if (b.id === 'resume') paused = false;
       else if (b.id === 'restart') retryLevel(false);
       else if (b.id === 'sound') Sound.toggleMute();
@@ -2049,6 +2062,7 @@ function levelClear() {
   totals.score += 1000;
   addPop(player.cx, player.y - 32, '+1000 CLOCKED OUT!', '#69f0ae', 15);
   SFX.door();
+  buzz([30, 40, 80]);
   setTimeout(() => SFX.fanfare(), 350);
   confetti(player.cx, player.y, 55);
   saveBest();
