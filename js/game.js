@@ -1146,6 +1146,7 @@ function openGates() {
 function updatePlayer(dt) {
   const p = player;
   p.prevY = p.y;
+  p.prevCx = p.cx;
   if (p.invuln > 0) p.invuln -= dt;
   if (p.boost > 0) p.boost -= dt;
   if (p.dashCd > 0) p.dashCd -= dt;
@@ -1455,7 +1456,13 @@ function updatePlayer(dt) {
   for (const pk of lvl.pickups) if (!pk.taken && rectHit(p, pk, -4)) collect(pk);
   for (const ck of lvl.checkpoints) {
     ck.t += dt;
-    if (!ck.active && Math.abs(p.cx - ck.x) < 42 && Math.abs((p.y + p.h) - ck.y) < 72) {
+    /* Checkpoint is a progress THRESHOLD, not a touch object: it activates when
+       the player crosses its x-position this frame (swept, so dashes at 790px/s
+       can't tunnel past), regardless of height. Proximity check kept as a
+       fallback for spawning already-standing-on-it edge cases. */
+    const crossed = (p.prevCx < ck.x && p.cx >= ck.x) || (p.prevCx > ck.x && p.cx <= ck.x);
+    const standingNear = Math.abs(p.cx - ck.x) < 42 && Math.abs((p.y + p.h) - ck.y) < 72;
+    if (!ck.active && state === 'play' && p.respawnLock <= 0 && (crossed || standingNear)) {
       ck.active = true;
       lvl.spawn = { x: ck.x, y: ck.y };
       totals.score += 100;
