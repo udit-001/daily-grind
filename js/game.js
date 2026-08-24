@@ -168,6 +168,15 @@ window.addEventListener('keydown', e => {
   }
   else if ((e.key === 'r' || e.key === 'R') && (state === 'play' || state === 'pause' || paused)) retryLevel(true);
   else if ((e.key === 'q' || e.key === 'Q') && paused) quitToTitle();
+  else if (paused && ['ArrowDown', 's', 'S', 'ArrowUp', 'w', 'W'].includes(e.key)) {
+    pauseMoveSel(['ArrowDown', 's', 'S'].includes(e.key) ? 1 : -1);
+  }
+  else if (paused && ['ArrowLeft', 'ArrowRight'].includes(e.key)) {
+    /* ←/→ flips whichever toggle row item holds the cursor */
+    const id = pauseMenuIds[pauseSel];
+    if (id === 'sound' || id === 'fullscreen') pauseActivate(id);
+  }
+  else if (paused && e.key === ' ') { pauseActivate(pauseMenuIds[pauseSel]); Input.buf = 0; }
   else if ((e.key === 's' || e.key === 'S') && (state === 'win' || state === 'gameover')) doShare();
   setKey(e.key, true);
 });
@@ -223,7 +232,8 @@ function syncUIButtons() {
      title/end screens: only the fullscreen toggle (nothing to play yet)
      select: only the character ‹ › arrows (tap a card to sign)
      cinematics: nothing — watch mode
-     play: touch controls only (fs toggle would cover the HUD; F11/pause remain)
+     play: touch controls only (fs toggle would cover the HUD; the coffee
+           break menu carries a fullscreen item instead) + F11/pause remain
      in fullscreen: hide the toggle — exit is the system gesture */
   const cinematic = charIntro > 0 || !!dialogue;
   const endScreen = state === 'win' || state === 'gameover';
@@ -2016,11 +2026,15 @@ function updateFx(dt) {
 
 /* ---------------- flow ---------------- */
 function onConfirm() {
+  if (paused) {
+    /* coffee break: Enter activates whatever holds the cursor (default RESUME) */
+    if (pauseMenuIds.length) { pauseActivate(pauseMenuIds[pauseSel]); Input.buf = 0; }
+    return;
+  }
   if (state === 'title') { state = 'select'; Sound.resume(); }
   else if (state === 'select') startGame();
   else if (state === 'gameover') retryLevel(false);
   else if (state === 'win') { state = 'title'; loadLevel(0, { ambient: true }); Sound.playSong('main'); }
-  else if (paused) paused = false;
 }
 /* tap a card on the staff-select screen to select; tap again to lock in */
 function handleSelectTap(e) {
@@ -2034,7 +2048,35 @@ function handleSelectTap(e) {
   else { setAvatar(i); SFX.click(); }
 }
 function togglePause() {
-  if (state === 'play' || state === 'intro') paused = !paused;
+  if (state === 'play' || state === 'intro') {
+    if (!paused) pauseSel = 0;            /* coffee break always opens on RESUME */
+    paused = !paused;
+  }
+}
+
+/* ── coffee-break menu model ──
+   One selection cursor, three drivers: mouse hover, ↑↓ keys, direct tap.
+   Items in focus order; toggles are session preferences, actions are journey
+   steps — the layout mirrors that split. */
+let pauseSel = 0;
+let pauseMenuIds = [];        /* focus order, rebuilt each draw */
+const FS_OK = !!(document.documentElement.requestFullscreen ||
+                 document.documentElement.webkitRequestFullscreen ||
+                 document.documentElement.mozRequestFullscreen ||
+                 document.documentElement.msRequestFullscreen);
+function pauseActivate(id) {
+  SFX.click(); buzz(10);
+  if (id === 'resume') paused = false;
+  else if (id === 'restart') retryLevel(false);
+  else if (id === 'sound') Sound.toggleMute();
+  else if (id === 'fullscreen') toggleFullscreen();
+  else if (id === 'quit') quitToTitle();
+}
+function pauseMoveSel(dir) {
+  const n = pauseMenuIds.length;
+  if (!n) return;
+  pauseSel = (pauseSel + dir + n) % n;
+  SFX.click();
 }
 /* ── coffee break (pause): quit-to-title + canvas menu hit-testing ── */
 function quitToTitle() {
@@ -2053,11 +2095,8 @@ function pauseBtnHit(x, y) {
 function handlePauseMenuTap(x, y) {
   for (const b of pauseMenuBtns) {
     if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
-      SFX.click(); buzz(10);
-      if (b.id === 'resume') paused = false;
-      else if (b.id === 'restart') retryLevel(false);
-      else if (b.id === 'sound') Sound.toggleMute();
-      else if (b.id === 'quit') quitToTitle();
+      pauseSel = pauseMenuIds.indexOf(b.id);
+      pauseActivate(b.id);
       return true;
     }
   }
@@ -3266,7 +3305,18 @@ function drawPauseBtn(g) {
   g.fillRect(x + w / 2 + 3, y + 9, 5, h - 18);
   pauseBtnRect = { x, y, w, h };
 }
-/* coffee-break card — same object language as the end screens */
+/* coffee-break card — same object language as the end screens.
+   Journey actions are full-width rows; session preferences (sound,
+   fullscreen) share a row. One selection cursor driven by hover AND
+   arrow keys — never two competing highlight systems. */
+const pauseGlow = {};        /* id -> eased 0..1 highlight */
+let pauseHoverXY = null;     /* canvas-space mouse pos while paused */
+let pauseLastHover = null;   /* last hover position we applied as selection */
+cv.addEventListener('pointermove', e => {
+  const r = cv.getBoundingClientRect();
+  pauseHoverXY = [(e.clientX - r.left) / r.width * VIEW_W, (e.clientY - r.top) / r.height * VIEW_H];
+});
+cv.addEventListener('pointerleave', () => { pauseHoverXY = null; });
 function drawPauseOverlay(g) {
   g.fillStyle = 'rgba(8,12,20,0.72)';
   g.fillRect(0, 0, VIEW_W, VIEW_H);
@@ -3290,28 +3340,73 @@ function drawPauseOverlay(g) {
   }
   text(g, 'COFFEE BREAK', cx + cw / 2, cy + 152, 24, '#f3e9dc');
   text(g, 'the grind will wait', cx + cw / 2, cy + 182, 9, 'rgba(255,255,255,0.55)');
-  /* menu buttons: RESUME is the visual primary */
-  pauseMenuBtns = [];
-  const items = [
-    { id: 'resume', label: 'RESUME' },
-    { id: 'restart', label: 'RESTART DAY' },
-    { id: 'sound', label: Sound.muted ? 'SOUND: OFF' : 'SOUND: ON' },
-    { id: 'quit', label: 'QUIT TO TITLE' },
+
+  /* items: rows define focus order; toggles share the preference row */
+  const bw = 340, bh = 62, th = 52, gap = 14, bx = cx + cw / 2 - bw / 2;
+  const bhOf = row => (row[0].id === 'sound' || row[0].id === 'fullscreen') ? th : bh;
+  const rows = [
+    [{ id: 'resume', label: 'RESUME' }],
+    [{ id: 'restart', label: 'RESTART DAY' }],
+    FS_OK ? [{ id: 'sound', label: Sound.muted ? 'SOUND: OFF' : 'SOUND: ON' },
+             { id: 'fullscreen', label: inFullscreen() ? 'FULLSCREEN: ON' : 'FULLSCREEN: OFF' }]
+          : [{ id: 'sound', label: Sound.muted ? 'SOUND: OFF' : 'SOUND: ON' }],
+    [{ id: 'quit', label: 'QUIT TO TITLE' }],
   ];
-  const bw = 340, bh = 62, gap = 14, bx = cx + cw / 2 - bw / 2;
-  let by = cy + 206;
-  for (const it of items) {
-    const primary = it.id === 'resume';
-    g.fillStyle = primary ? 'rgba(67,209,124,0.20)' : 'rgba(255,255,255,0.08)';
-    g.beginPath(); g.roundRect(bx, by, bw, bh, 10); g.fill();
-    g.strokeStyle = primary ? 'rgba(105,240,174,0.7)' : 'rgba(255,255,255,0.25)';
-    g.lineWidth = 2;
-    g.beginPath(); g.roundRect(bx, by, bw, bh, 10); g.stroke();
-    text(g, it.label, cx + cw / 2, by + bh / 2 + 1, 13, primary ? '#b9f6ca' : 'rgba(255,255,255,0.88)');
-    pauseMenuBtns.push({ id: it.id, x: bx, y: by, w: bw, h: bh });
-    by += bh + gap;
+  pauseMenuBtns = [];
+  pauseMenuIds = [];
+  for (const row of rows) for (const it of row) pauseMenuIds.push(it.id);
+
+  /* hover sets the same cursor the arrows move — one state, three drivers.
+     Re-applies only when the pointer MOVES: a parked mouse must not keep
+     stealing the cursor back from the keyboard (last input wins). */
+  if (pauseHoverXY && matchMedia('(pointer: fine)').matches) {
+    const moved = !pauseLastHover ||
+                  pauseLastHover[0] !== pauseHoverXY[0] || pauseLastHover[1] !== pauseHoverXY[1];
+    if (moved) {
+      let ry = cy + 206;
+      for (const row of rows) {
+        const h = bhOf(row), n = row.length, rw = n === 1 ? bw : (bw - gap * (n - 1)) / n;
+        for (let ci = 0; ci < n; ci++) {
+          const rx = bx + ci * (rw + gap), [mx, my] = pauseHoverXY;
+          if (mx >= rx && mx <= rx + rw && my >= ry && my <= ry + h) { pauseSel = pauseMenuIds.indexOf(row[ci].id); ci = n; }
+        }
+        ry += h + gap;
+      }
+      pauseLastHover = [pauseHoverXY[0], pauseHoverXY[1]];
+    }
   }
-  text(g, 'P RESUME · R RESTART · M SOUND · Q QUIT', cx + cw / 2, cy + ch - 20, 8, 'rgba(255,255,255,0.4)');
+  pauseSel = ((pauseSel % pauseMenuIds.length) + pauseMenuIds.length) % pauseMenuIds.length;
+
+  let by = cy + 206;
+  for (const row of rows) {
+    const h = bhOf(row), n = row.length, rw = n === 1 ? bw : (bw - gap * (n - 1)) / n;
+    for (let ci = 0; ci < n; ci++) {
+      const it = row[ci], rx = bx + ci * (rw + gap);
+      const selected = pauseMenuIds[pauseSel] === it.id;
+      pauseGlow[it.id] = Math.max(0, Math.min(1, (pauseGlow[it.id] || 0) + (selected ? 0.22 : -0.22)));
+      const gl = pauseGlow[it.id];
+      const primary = it.id === 'resume';
+      g.fillStyle = primary ? `rgba(67,209,124,${0.20 + gl * 0.14})`
+                            : `rgba(255,255,255,${0.08 + gl * 0.12})`;
+      g.beginPath(); g.roundRect(rx, by, rw, h, 10); g.fill();
+      g.strokeStyle = primary ? `rgba(105,240,174,${0.7 + gl * 0.3})`
+                              : `rgba(255,255,255,${0.25 + gl * 0.65})`;
+      g.lineWidth = 2;
+      g.beginPath(); g.roundRect(rx, by, rw, h, 10); g.stroke();
+      const off = gl > 0.05 ? 8 : 0;                 /* room for the cursor chevron */
+      if (gl > 0.05) {
+        g.globalAlpha = gl;
+        text(g, '\u25B6', rx + 18, by + h / 2 + 1, 11, primary ? '#b9f6ca' : '#ffffff');
+        g.globalAlpha = 1;
+      }
+      text(g, it.label, rx + rw / 2 + off, by + h / 2 + 1, 13,
+           primary ? '#b9f6ca' : `rgba(255,255,255,${Math.min(1, 0.88 + gl * 0.12)})`);
+      pauseMenuBtns.push({ id: it.id, x: rx, y: by, w: rw, h });
+    }
+    by += h + gap;
+  }
+  text(g, '\u2191\u2193 MOVE \u00B7 ENTER SELECT \u00B7 P RESUME \u00B7 R RESTART \u00B7 Q QUIT',
+       cx + cw / 2, cy + ch - 20, 8, 'rgba(255,255,255,0.4)');
 }
 
 /* ---------------- main loop ---------------- */
@@ -3641,6 +3736,11 @@ Object.assign(window.__G, {
   tp: (x, y) => { if (player) { player.x = x; player.y = y; player.vx = 0; player.vy = 0; player.prevY = y; player.ride = null; } },
   hintState: () => ({ seen: Object.assign({}, hintsSeen), cur: curHint ? curHint.id : null }),
   hintsReset: () => resetHints(),
+  isPaused: () => paused,
+  pauseSel: () => pauseSel,
+  pauseItems: () => pauseMenuIds.slice(),
+  pauseHover: () => pauseHoverXY,
+  viewSize: () => [VIEW_W, VIEW_H],
   heal: () => { if (player && player.hearts < KIT().maxHearts) player.hearts++; },
   badge: () => { if (lvl) { lvl.hasKey = true; openGates(); } },
   world: () => ({
